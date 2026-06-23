@@ -597,3 +597,10 @@ export const initialTransactions = [
     status: 'Pago protegido',
   },
 ];
+
+export type Card = (typeof cards)[number];
+export type Offer = Card['offers'][number];
+export type Transaction = (typeof initialTransactions)[number] & {
+  releaseMessage?: string;
+  payoutMethod?: string;
+};

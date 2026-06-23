@@ -1,6 +1,7 @@
+import type { Card } from '../data/cards';
 import { money } from '../utils/money';
 
-export function CardTile({ card, onClick }) {
+export function CardTile({ card, onClick }: { card: Card; onClick: () => void }) {
   const best = Math.min(...card.offers.map((o) => o.price));
   return (
     <button

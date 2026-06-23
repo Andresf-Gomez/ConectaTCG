@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { ShieldCheck, CreditCard, WalletCards, ArrowLeft } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { money } from '../utils/money';
+import type { Card, Offer } from '../data/cards';
 
-export function Checkout({ card, offer, setPage, setOrderPlaced }) {
+export function Checkout({ card, offer, setPage, setOrderPlaced }: { card: Card; offer: Offer; setPage: (page: string) => void; setOrderPlaced: (v: boolean) => void }) {
   if (!card || !offer) return null;
 
   const platformBalance = 180000;

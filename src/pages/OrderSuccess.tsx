@@ -1,7 +1,7 @@
 import { CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import { Layout } from '../components/Layout';
 
-export function OrderSuccess({ setPage }) {
+export function OrderSuccess({ setPage }: { setPage: (page: string) => void }) {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto bg-white rounded-[2rem] border border-slate-200 p-8 text-center shadow-sm">

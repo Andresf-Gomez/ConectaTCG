@@ -5,7 +5,7 @@ import { PriceBox } from '../components/PriceBox';
 import { cards } from '../data/cards';
 import { money } from '../utils/money';
 
-export function PublishPage({ setPage }) {
+export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
   const publishExpansions = Array.from(new Set(cards.map((c) => c.set)));
   const languageOptions = ['Español', 'Inglés', 'Japonés', 'Portugués'];
   const singleConditionOptions = [
@@ -36,7 +36,7 @@ export function PublishPage({ setPage }) {
   const conditionOptions =
     selectedType === 'Producto sellado' ? sealedConditionOptions : singleConditionOptions;
 
-  function applyCard(card) {
+  function applyCard(card: typeof cards[number]) {
     setSelectedCard(card);
     setSelectedType(card.type);
     setSelectedLanguage(card.language || 'Español');
@@ -46,7 +46,7 @@ export function PublishPage({ setPage }) {
     setPrice(card.marketAvg);
   }
 
-  function changeType(type) {
+  function changeType(type: string) {
     setSelectedType(type);
     const firstCard =
       cards.find((c) => c.type === type && c.set === selectedExpansion) ||
@@ -56,7 +56,7 @@ export function PublishPage({ setPage }) {
     applyCard(firstCard);
   }
 
-  function changeExpansion(expansion) {
+  function changeExpansion(expansion: string) {
     setSelectedExpansion(expansion);
     const firstCard =
       cards.find((c) => c.set === expansion && c.type === selectedType) ||
@@ -65,7 +65,7 @@ export function PublishPage({ setPage }) {
     applyCard(firstCard);
   }
 
-  function changeCard(id) {
+  function changeCard(id: string) {
     const c = cards.find((x) => x.id === Number(id));
     if (!c) return;
     applyCard(c);

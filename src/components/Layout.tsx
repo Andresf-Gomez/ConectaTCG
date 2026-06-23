@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 
-export function Layout({ children }) {
+export function Layout({ children }: { children: ReactNode }) {
   return (
     <motion.main
       initial={{ opacity: 0, y: 10 }}

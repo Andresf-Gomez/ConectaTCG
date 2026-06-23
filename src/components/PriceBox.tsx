@@ -1,4 +1,4 @@
-export function PriceBox({ label, value, highlight = false }) {
+export function PriceBox({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div
       className={`rounded-2xl p-4 border ${

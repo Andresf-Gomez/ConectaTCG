@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { SearchBar } from '../components/SearchBar';
 import { CardTile } from '../components/CardTile';
-import { cards } from '../data/cards';
+import { cards, type Card } from '../data/cards';
 import { money } from '../utils/money';
 
 export function Marketplace({
@@ -11,6 +10,11 @@ export function Marketplace({
   setSelectedCard,
   searchQuery,
   setSearchQuery,
+}: {
+  setPage: (page: string) => void;
+  setSelectedCard: (card: Card) => void;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
 }) {
   const query = searchQuery;
   const setQuery = setSearchQuery;

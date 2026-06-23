@@ -1,7 +1,7 @@
 import { Truck } from 'lucide-react';
 import { Layout } from '../components/Layout';
 
-export function ShipmentSuccess({ setPage }) {
+export function ShipmentSuccess({ setPage }: { setPage: (page: string) => void }) {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto bg-white rounded-[2rem] border border-slate-200 p-8 text-center shadow-sm">

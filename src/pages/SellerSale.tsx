@@ -2,7 +2,7 @@ import { Bell, Truck } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { money } from '../utils/money';
 
-export function SellerSale({ setPage }) {
+export function SellerSale({ setPage }: { setPage: (page: string) => void }) {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">

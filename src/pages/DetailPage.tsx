@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { Card, Offer } from '../data/cards';
 import { ArrowLeft } from 'lucide-react';
 import {
   LineChart,
@@ -16,7 +17,7 @@ import { OfferRow } from '../components/OfferRow';
 import { money } from '../utils/money';
 import { buildSalesHistory } from '../utils/buildSalesHistory';
 
-function PriceTrendChart({ card }) {
+function PriceTrendChart({ card }: { card: Card }) {
   const data = useMemo(() => buildSalesHistory(card), [card]);
   const firstPrice = data[0]?.precio || 0;
   const lastPrice = data[data.length - 1]?.precio || 0;
@@ -107,7 +108,7 @@ function PriceTrendChart({ card }) {
   );
 }
 
-export function DetailPage({ card, setPage, setSelectedOffer, setSelectedSeller }) {
+export function DetailPage({ card, setPage, setSelectedOffer, setSelectedSeller }: { card: Card; setPage: (page: string) => void; setSelectedOffer: (offer: Offer) => void; setSelectedSeller: (offer: Offer) => void }) {
   if (!card) return null;
   return (
     <Layout>

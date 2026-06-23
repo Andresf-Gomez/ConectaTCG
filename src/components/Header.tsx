@@ -9,7 +9,7 @@ import {
   User,
 } from 'lucide-react';
 
-export function Header({ page, setPage, notifications }) {
+export function Header({ page, setPage, notifications }: { page: string; setPage: (page: string) => void; notifications: number }) {
   const nav = [
     { key: 'home', label: 'Inicio', icon: Home },
     { key: 'market', label: 'Marketplace', icon: Store },

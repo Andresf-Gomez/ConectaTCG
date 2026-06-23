@@ -5,7 +5,10 @@ import { Metric } from '../components/Metric';
 import { InfoPill } from '../components/InfoPill';
 import { sellerReviews } from '../data/sellerReviews';
 
-export function SellerProfile({ seller, setPage }) {
+export function SellerProfile({ seller, setPage }: {
+  seller: { seller: string; rating: number; sales: number; reviews: number; verified: boolean; city: string };
+  setPage: (page: string) => void;
+}) {
   if (!seller) return null;
   const reviews = sellerReviews[seller.seller] || [];
   return (

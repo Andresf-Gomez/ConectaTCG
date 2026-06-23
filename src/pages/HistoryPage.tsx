@@ -4,8 +4,9 @@ import { Layout } from '../components/Layout';
 import { Metric } from '../components/Metric';
 import { money } from '../utils/money';
 import { getCommissionValue, getCommissionLabel } from '../utils/commissions';
+import type { Transaction } from '../data/cards';
 
-function TransactionTableRow({ transaction, onView }) {
+function TransactionTableRow({ transaction, onView }: { transaction: Transaction; onView: (t: Transaction) => void }) {
   const isSale = transaction.type === 'Venta';
   const commissionRate = isSale
     ? getCommissionLabel(transaction.gross)
@@ -93,9 +94,14 @@ function TransactionTableRow({ transaction, onView }) {
 
 export function HistoryPage({
   transactions,
-  setTransactions,
+  setTransactions: _setTransactions,
   setPage,
   setSelectedTransaction,
+}: {
+  transactions: Transaction[];
+  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
+  setPage: (page: string) => void;
+  setSelectedTransaction: (t: Transaction) => void;
 }) {
   const [typeFilter, setTypeFilter] = useState('Todos');
   const [startDate, setStartDate] = useState('');
@@ -109,7 +115,7 @@ export function HistoryPage({
     setSearchText('');
   }
 
-  function viewTransaction(transaction) {
+  function viewTransaction(transaction: Transaction) {
     setSelectedTransaction(transaction);
     setPage('transactionDetail');
   }

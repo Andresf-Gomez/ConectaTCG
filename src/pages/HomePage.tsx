@@ -4,9 +4,9 @@ import { Layout } from '../components/Layout';
 import { SearchBar } from '../components/SearchBar';
 import { InfoPill } from '../components/InfoPill';
 import { OfferMini } from '../components/OfferMini';
-import { cards } from '../data/cards';
+import { cards, type Card } from '../data/cards';
 
-export function HomePage({ setPage, setSelectedCard, searchQuery, setSearchQuery }) {
+export function HomePage({ setPage, setSelectedCard, searchQuery, setSearchQuery }: { setPage: (page: string) => void; setSelectedCard: (card: Card) => void; searchQuery: string; setSearchQuery: (q: string) => void }) {
   const [query, setQuery] = useState(searchQuery || '');
   const goSearch = () => {
     setSearchQuery(query.trim());

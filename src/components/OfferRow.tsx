@@ -1,7 +1,8 @@
+import type { Offer } from '../data/cards';
 import { Star, BadgeCheck, ShoppingCart } from 'lucide-react';
 import { money } from '../utils/money';
 
-export function OfferRow({ offer, onSeller, onBuy }) {
+export function OfferRow({ offer, onSeller, onBuy }: { offer: Offer; onSeller: () => void; onBuy: () => void }) {
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
       <div className="flex-1">

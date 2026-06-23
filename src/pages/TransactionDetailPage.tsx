@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { ArrowLeft, CheckCircle2, AlertTriangle, WalletCards, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, WalletCards } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { PriceBox } from '../components/PriceBox';
-import { cards } from '../data/cards';
+import { cards, type Transaction } from '../data/cards';
 import { money } from '../utils/money';
 import { getCommissionValue, getCommissionLabel } from '../utils/commissions';
 
@@ -11,6 +11,11 @@ export function TransactionDetailPage({
   setPage,
   setTransactions,
   setSelectedTransaction,
+}: {
+  transaction: Transaction;
+  setPage: (page: string) => void;
+  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
+  setSelectedTransaction: (t: Transaction) => void;
 }) {
   const [message, setMessage] = useState('');
 
@@ -43,7 +48,7 @@ export function TransactionDetailPage({
     : transaction.gross;
   const relatedCard = cards.find((card) => card.name === transaction.product);
 
-  function updateSelectedTransaction(nextValues, userMessage) {
+  function updateSelectedTransaction(nextValues: Partial<Transaction>, userMessage: string) {
     const updatedTransaction = { ...transaction, ...nextValues };
     setTransactions((currentTransactions) =>
       currentTransactions.map((item) =>

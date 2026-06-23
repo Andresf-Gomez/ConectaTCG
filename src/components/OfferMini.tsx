@@ -1,7 +1,8 @@
+import type { Offer } from '../data/cards';
 import { Star, BadgeCheck } from 'lucide-react';
 import { money } from '../utils/money';
 
-export function OfferMini({ offer, onClick }) {
+export function OfferMini({ offer, onClick }: { offer: Offer; onClick: () => void }) {
   return (
     <button
       onClick={onClick}

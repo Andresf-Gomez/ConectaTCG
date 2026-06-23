@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react';
 
-export function SearchBar({ query, setQuery, onSearch }) {
+export function SearchBar({ query, setQuery, onSearch }: { query: string; setQuery: (q: string) => void; onSearch: () => void }) {
   return (
     <div className="bg-white rounded-3xl p-2 shadow-xl shadow-blue-900/10 border border-blue-100 flex flex-col md:flex-row gap-2">
       <div className="flex-1 flex items-center gap-3 px-4 py-3">

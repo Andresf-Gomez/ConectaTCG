@@ -1,4 +1,6 @@
-export function InfoPill({ icon: Icon, title, text }) {
+import type { LucideIcon } from 'lucide-react';
+
+export function InfoPill({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: string }) {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
       <Icon className="text-blue-600 mb-2" size={22} />
