@@ -16,6 +16,7 @@ import { PriceBox } from '../components/PriceBox';
 import { OfferRow } from '../components/OfferRow';
 import { money } from '../utils/money';
 import { buildSalesHistory } from '../utils/buildSalesHistory';
+import { CardImage } from '../components/ImagePlaceholder';
 
 function PriceTrendChart({ card }: { card: Card }) {
   const data = useMemo(() => buildSalesHistory(card), [card]);
@@ -119,10 +120,12 @@ export function DetailPage({ card, setPage, setSelectedOffer, setSelectedSeller 
         <ArrowLeft size={18} /> Volver al marketplace
       </button>
       <div className="grid lg:grid-cols-[360px_1fr] gap-6">
-        <div className="bg-gradient-to-br from-blue-50 to-yellow-50 rounded-3xl p-6 border border-slate-200 flex items-center justify-center">
-          <img
+        <div className="bg-gradient-to-br from-blue-50 to-yellow-50 rounded-3xl p-6 border border-slate-200 flex items-center justify-center min-h-[300px]">
+          <CardImage
             src={card.image}
+            alt={card.name}
             className="max-h-[520px] object-contain drop-shadow-2xl"
+            placeholderSize="lg"
           />
         </div>
         <div>

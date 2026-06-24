@@ -1,7 +1,9 @@
 import type { Card } from '../data/cards';
+import type { GroupedCard } from '../hooks/useCards';
 import { money } from '../utils/money';
+import { CardImage } from './ImagePlaceholder';
 
-export function CardTile({ card, onClick }: { card: Card; onClick: () => void }) {
+export function CardTile({ card, onClick }: { card: Card | GroupedCard; onClick: () => void }) {
   const best = Math.min(...card.offers.map((o) => o.price));
   return (
     <button
@@ -9,8 +11,9 @@ export function CardTile({ card, onClick }: { card: Card; onClick: () => void })
       className="group text-left bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition"
     >
       <div className="bg-gradient-to-br from-blue-50 to-yellow-50 p-5 flex justify-center h-64">
-        <img
+        <CardImage
           src={card.image}
+          alt={card.name}
           className="max-h-full object-contain group-hover:scale-105 transition"
         />
       </div>

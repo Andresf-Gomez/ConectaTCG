@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X, Loader2 } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { SearchBar } from '../components/SearchBar';
 import { CardTile } from '../components/CardTile';
-import { cards, type Card } from '../data/cards';
+import { cards as catalogCards, type Card } from '../data/cards';
 import { money } from '../utils/money';
+import { useCards, type GroupedCard } from '../hooks/useCards';
 
 export function Marketplace({
   setPage,
@@ -13,10 +14,13 @@ export function Marketplace({
   setSearchQuery,
 }: {
   setPage: (page: string) => void;
-  setSelectedCard: (card: Card) => void;
+  setSelectedCard: (card: Card | GroupedCard) => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
 }) {
+  const { cards: supabaseCards, loading: cardsLoading } = useCards();
+  const allCards: (Card | GroupedCard)[] = [...catalogCards, ...supabaseCards];
+
   const query = searchQuery;
   const setQuery = setSearchQuery;
 
@@ -30,27 +34,24 @@ export function Marketplace({
     'Cartagena',
     'Pereira',
   ];
-  const expansions = ['Todas', ...Array.from(new Set(cards.map((c) => c.set)))];
-  const languages = ['Todos', ...Array.from(new Set(cards.map((c) => c.language || 'Español')))];
-  const lowestPrice = Math.min(
-    ...cards.flatMap((c) => c.offers.map((o) => o.price))
-  );
-  const highestPrice = Math.max(
-    ...cards.flatMap((c) => c.offers.map((o) => o.price))
-  );
+  const expansions = ['Todas', ...Array.from(new Set(allCards.map((c) => c.set)))];
+  const languages = ['Todos', ...Array.from(new Set(allCards.map((c) => c.language || 'Español')))];
+  const allPrices = allCards.flatMap((c) => c.offers.map((o) => o.price));
+  const lowestPrice = allPrices.length > 0 ? Math.min(...allPrices) : 0;
+  const highestPrice = allPrices.length > 0 ? Math.max(...allPrices) : 1000000;
 
   const [segmentFilter, setSegmentFilter] = useState('Todos');
   const [cityFilter, setCityFilter] = useState('Todas');
   const [expansionFilter, setExpansionFilter] = useState('Todas');
   const [languageFilter, setLanguageFilter] = useState('Todos');
-  const [minPrice, setMinPrice] = useState(lowestPrice);
-  const [maxPrice, setMaxPrice] = useState(highestPrice);
+  const [minPrice, setMinPrice] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(1000000);
   const [showFilters, setShowFilters] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    return cards.filter((c) => {
+    return allCards.filter((c) => {
       const bestPrice = Math.min(...c.offers.map((o) => o.price));
       const matchesSearch =
         !q ||
@@ -82,7 +83,7 @@ export function Marketplace({
         matchesPrice
       );
     });
-  }, [query, cityFilter, expansionFilter, languageFilter, minPrice, maxPrice]);
+  }, [query, cityFilter, expansionFilter, languageFilter, minPrice, maxPrice, allCards]);
 
   const resetFilters = () => {
     setSegmentFilter('Todos');
@@ -268,14 +269,22 @@ export function Marketplace({
         </aside>
 
         <section className="space-y-8">
-          {visibleFiltered.length === 0 ? (
+          {cardsLoading ? (
+            <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+              <Loader2 className="mx-auto animate-spin text-blue-600 mb-3" size={32} />
+              <p className="text-lg font-black text-slate-900">Cargando productos...</p>
+            </div>
+          ) : visibleFiltered.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center">
               <p className="text-xl font-black text-slate-900">
-                No encontramos productos con esos filtros
+                {allCards.length === 0
+                  ? 'Aún no hay cartas publicadas. ¡Sé el primero en vender!'
+                  : 'No encontramos productos con esos filtros'}
               </p>
               <p className="text-slate-500 mt-2">
-                Limpia los filtros o amplía el rango de precio para ver más
-                opciones.
+                {allCards.length === 0
+                  ? 'Publica tu primera carta desde la sección de venta.'
+                  : 'Limpia los filtros o amplía el rango de precio para ver más opciones.'}
               </p>
             </div>
           ) : (

@@ -1,254 +1,552 @@
-import { useState } from 'react';
-import { PlusCircle, Upload } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, LayoutGrid, ArrowLeft, Upload, Loader2, Layers } from 'lucide-react';
 import { Layout } from '../components/Layout';
-import { PriceBox } from '../components/PriceBox';
-import { cards } from '../data/cards';
-import { money } from '../utils/money';
+import { CardImage } from '../components/ImagePlaceholder';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
+import {
+  useCatalog,
+  LANG_LABELS,
+  getDisplayName,
+  type CatalogCard,
+} from '../hooks/useCatalog';
 
+const CONDITIONS = ['Near Mint', 'Excellent', 'Light Played', 'Played'];
+const CITIES = [
+  'Bogotá',
+  'Medellín',
+  'Cali',
+  'Barranquilla',
+  'Bucaramanga',
+  'Cartagena',
+  'Pereira',
+  'Manizales',
+  'Santa Marta',
+  'Ibagué',
+];
 export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
-  const publishExpansions = Array.from(new Set(cards.map((c) => c.set)));
-  const languageOptions = ['Español', 'Inglés', 'Japonés', 'Portugués'];
-  const singleConditionOptions = [
-    'Near Mint',
-    'Excellent',
-    'Light Played',
-    'Played',
-    'Damaged',
-  ];
-  const sealedConditionOptions = [
-    'Sellado nuevo',
-    'Sellado con desgaste leve',
-    'Sellado con golpe en caja',
-    'Sellado con plástico abierto',
-    'Producto abierto / incompleto',
-  ];
+  const { user } = useAuth();
+  const { catalog, loading: catalogLoading } = useCatalog();
 
-  const [selectedType, setSelectedType] = useState('Carta single');
-  const [selectedExpansion, setSelectedExpansion] = useState(cards[0].set);
-  const [selectedCard, setSelectedCard] = useState(cards[0]);
-  const [selectedLanguage, setSelectedLanguage] = useState(cards[0].language || 'Español');
-  const [selectedCondition, setSelectedCondition] = useState('Near Mint');
-  const [price, setPrice] = useState(cards[0].marketAvg);
+  const [mode, setMode] = useState<'search' | 'explore' | null>(null);
+  const [selectedCard, setSelectedCard] = useState<CatalogCard | null>(null);
 
-  const filteredPublishCards = cards.filter(
-    (c) => c.set === selectedExpansion && c.type === selectedType
-  );
-  const conditionOptions =
-    selectedType === 'Producto sellado' ? sealedConditionOptions : singleConditionOptions;
+  // Search mode
+  const [searchTerm, setSearchTerm] = useState('');
 
-  function applyCard(card: typeof cards[number]) {
-    setSelectedCard(card);
-    setSelectedType(card.type);
-    setSelectedLanguage(card.language || 'Español');
-    setSelectedCondition(
-      card.type === 'Producto sellado' ? 'Sellado nuevo' : 'Near Mint'
+  // Explore mode
+  const [exploreStep, setExploreStep] = useState(1);
+  const [exploreLang, setExploreLang] = useState('');
+  const [exploreSet, setExploreSet] = useState('');
+
+  // Publish form
+  const [price, setPrice] = useState(0);
+  const [condition, setCondition] = useState('Near Mint');
+  const [city, setCity] = useState('Bogotá');
+  const [description, setDescription] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState('');
+
+  // --- Search mode logic ---
+  const suggestions = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q || q.length < 2) return [];
+    const results: CatalogCard[] = [];
+    for (const card of catalog) {
+      for (const name of Object.values(card.names)) {
+        if (name.toLowerCase().includes(q)) {
+          results.push(card);
+          break;
+        }
+      }
+      if (results.length >= 8) break;
+    }
+    return results;
+  }, [searchTerm, catalog]);
+
+  // --- Explore mode logic ---
+  const availableLanguages = useMemo(() => {
+    const langs = new Set<string>();
+    for (const card of catalog) {
+      for (const l of card.languages) langs.add(l);
+    }
+    return Array.from(langs).sort((a, b) =>
+      (LANG_LABELS[a] || a).localeCompare(LANG_LABELS[b] || b)
     );
-    setPrice(card.marketAvg);
+  }, [catalog]);
+
+  const availableSets = useMemo(() => {
+    if (!exploreLang) return [];
+    const sets = new Set<string>();
+    for (const card of catalog) {
+      if (card.languages.includes(exploreLang)) sets.add(card.set_id);
+    }
+    return Array.from(sets).sort();
+  }, [exploreLang, catalog]);
+
+  const setCards = useMemo(() => {
+    if (!exploreLang || !exploreSet) return [];
+    return catalog.filter(
+      (c) => c.set_id === exploreSet && c.languages.includes(exploreLang)
+    );
+  }, [exploreLang, exploreSet, catalog]);
+
+  function selectCard(card: CatalogCard) {
+    setSelectedCard(card);
   }
 
-  function changeType(type: string) {
-    setSelectedType(type);
-    const firstCard =
-      cards.find((c) => c.type === type && c.set === selectedExpansion) ||
-      cards.find((c) => c.type === type) ||
-      cards[0];
-    setSelectedExpansion(firstCard.set);
-    applyCard(firstCard);
+  function resetSelection() {
+    setSelectedCard(null);
+    setSearchTerm('');
   }
 
-  function changeExpansion(expansion: string) {
-    setSelectedExpansion(expansion);
-    const firstCard =
-      cards.find((c) => c.set === expansion && c.type === selectedType) ||
-      cards.find((c) => c.set === expansion) ||
-      cards[0];
-    applyCard(firstCard);
+  function resetMode() {
+    setMode(null);
+    setSelectedCard(null);
+    setSearchTerm('');
+    setExploreStep(1);
+    setExploreLang('');
+    setExploreSet('');
   }
 
-  function changeCard(id: string) {
-    const c = cards.find((x) => x.id === Number(id));
-    if (!c) return;
-    applyCard(c);
+  async function handlePublish() {
+    if (!selectedCard) return;
+    setPublishError('');
+    setPublishing(true);
+    const { error } = await supabase.from('cards').insert({
+      seller_id: user?.id,
+      name: getDisplayName(selectedCard),
+      set_name: selectedCard.set_id,
+      number: selectedCard.id,
+      rarity: '',
+      type: 'Carta single',
+      language: exploreLang || selectedCard.languages[0] || 'en',
+      image: selectedCard.image_url,
+      condition,
+      price,
+      city,
+      description,
+      seller_name: user?.email ?? 'Vendedor',
+    });
+    setPublishing(false);
+    if (error) {
+      setPublishError(error.message);
+    } else {
+      setPage('publishSuccess');
+    }
   }
 
-  return (
-    <Layout>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-        <div>
+  // --- Loading state ---
+  if (catalogLoading) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="animate-spin text-blue-600 mb-4" size={36} />
+          <p className="text-lg font-black text-slate-900">
+            Cargando catálogo de cartas...
+          </p>
+          <p className="text-sm text-slate-500 mt-1">35,793 cartas disponibles</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // --- Card selected → show publish form ---
+  if (selectedCard) {
+    return (
+      <Layout>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-3xl font-black text-slate-950">
+              Publicar producto
+            </h2>
+            <p className="text-slate-600">
+              Completa los detalles de tu publicación.
+            </p>
+          </div>
+        </div>
+        <div className="grid lg:grid-cols-[1fr_380px] gap-6">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="text-xl font-black text-slate-900 mb-5">
+              Detalles de venta
+            </h3>
+            <div className="grid gap-5">
+              <div>
+                <label className="text-sm font-bold text-slate-700">
+                  Precio (COP)
+                </label>
+                <input
+                  type="number"
+                  value={price || ''}
+                  onChange={(e) => setPrice(Number(e.target.value))}
+                  placeholder="Ej: 150000"
+                  className="mt-2 w-full border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-bold text-slate-700 mb-2 block">
+                  Condición
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {CONDITIONS.map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setCondition(c)}
+                      className={`px-4 py-2.5 rounded-2xl text-sm font-bold border transition ${
+                        condition === c
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-blue-50'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-bold text-slate-700">Ciudad</label>
+                <select
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="mt-2 w-full border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
+                >
+                  {CITIES.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-bold text-slate-700">
+                  Descripción
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="mt-2 w-full border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500 min-h-[100px]"
+                  placeholder="Estado de la carta, detalles de envío, condiciones..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+              <h3 className="font-black text-slate-950 text-xl mb-4">
+                Carta seleccionada
+              </h3>
+              <div className="bg-gradient-to-br from-blue-50 to-yellow-50 rounded-2xl p-4 flex justify-center min-h-[200px] items-center">
+                <CardImage
+                  src={selectedCard.image_url}
+                  alt={getDisplayName(selectedCard)}
+                  className="max-h-64 object-contain rounded-xl"
+                />
+              </div>
+              <div className="mt-4">
+                <p className="font-black text-lg text-slate-900">
+                  {getDisplayName(selectedCard)}
+                </p>
+                <p className="text-sm text-slate-500">{selectedCard.set_id}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Idiomas: {selectedCard.languages.map((l) => LANG_LABELS[l] || l).join(', ')}
+                </p>
+              </div>
+              <button
+                onClick={resetSelection}
+                className="mt-4 w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Cambiar carta
+              </button>
+            </div>
+
+            {publishError && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-xl p-3">
+                {publishError}
+              </p>
+            )}
+            <button
+              onClick={handlePublish}
+              disabled={publishing || price <= 0}
+              className="w-full px-5 py-4 rounded-2xl bg-yellow-400 hover:bg-yellow-300 font-black text-slate-900 flex items-center justify-center gap-2 disabled:opacity-50 transition"
+            >
+              <Upload size={20} />
+              {publishing ? 'Publicando...' : 'Publicar producto'}
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // --- Mode selector ---
+  if (!mode) {
+    return (
+      <Layout>
+        <div className="mb-6">
           <h2 className="text-3xl font-black text-slate-950">
             Publicar producto
           </h2>
+          <p className="text-slate-600 mt-1">
+            Elige cómo quieres encontrar tu carta.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl">
+          <button
+            onClick={() => setMode('search')}
+            className="group bg-white rounded-3xl border border-slate-200 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 transition text-left"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+              <Search size={28} className="text-white" />
+            </div>
+            <h3 className="text-xl font-black text-slate-950">Buscar carta</h3>
+            <p className="text-sm text-slate-500 mt-2">
+              Escribe el nombre y encuentra tu carta al instante. Busca en todos
+              los idiomas.
+            </p>
+          </button>
+          <button
+            onClick={() => setMode('explore')}
+            className="group bg-white rounded-3xl border border-slate-200 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 transition text-left"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-yellow-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+              <LayoutGrid size={28} className="text-slate-900" />
+            </div>
+            <h3 className="text-xl font-black text-slate-950">
+              Explorar catálogo
+            </h3>
+            <p className="text-sm text-slate-500 mt-2">
+              Navega paso a paso: idioma, set y carta. Ideal si no recuerdas el
+              nombre exacto.
+            </p>
+          </button>
+          <button
+            onClick={() => setPage('bulkPublish')}
+            className="group bg-white rounded-3xl border border-slate-200 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 transition text-left"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+              <Layers size={28} className="text-white" />
+            </div>
+            <h3 className="text-xl font-black text-slate-950">
+              Publicación masiva
+            </h3>
+            <p className="text-sm text-slate-500 mt-2">
+              Agrega varias cartas a la vez en una tabla y publícalas con un
+              solo clic.
+            </p>
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
+  // --- Mode A: Search ---
+  if (mode === 'search') {
+    return (
+      <Layout>
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={resetMode}
+            className="p-3 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 transition"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-3xl font-black text-slate-950">Buscar carta</h2>
+            <p className="text-slate-600">
+              Escribe al menos 2 caracteres para ver sugerencias.
+            </p>
+          </div>
+        </div>
+
+        <div className="max-w-2xl">
+          <div className="relative">
+            <Search
+              size={20}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Ej: Charizard, Pikachu VMAX, リザードン..."
+              className="w-full border border-slate-200 rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-blue-500 text-lg"
+              autoFocus
+            />
+          </div>
+
+          {suggestions.length > 0 && (
+            <div className="mt-2 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden">
+              {suggestions.map((card) => (
+                <button
+                  key={card.id}
+                  onClick={() => selectCard(card)}
+                  className="w-full flex items-center gap-4 p-4 hover:bg-blue-50 transition text-left border-b border-slate-100 last:border-0"
+                >
+                  <div className="w-12 h-16 rounded-lg bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    <CardImage
+                      src={card.image_url}
+                      alt={getDisplayName(card)}
+                      className="w-full h-full object-contain"
+                      placeholderSize="sm"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-black text-slate-900 truncate">
+                      {getDisplayName(card)}
+                    </p>
+                    <p className="text-sm text-slate-500">{card.set_id}</p>
+                    <p className="text-xs text-slate-400">
+                      {card.languages
+                        .map((l) => LANG_LABELS[l] || l)
+                        .join(', ')}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {searchTerm.length >= 2 && suggestions.length === 0 && (
+            <div className="mt-4 bg-white border border-slate-200 rounded-2xl p-6 text-center">
+              <p className="font-black text-slate-900">
+                No se encontraron cartas
+              </p>
+              <p className="text-sm text-slate-500 mt-1">
+                Intenta con otro nombre o prueba el modo "Explorar catálogo".
+              </p>
+            </div>
+          )}
+        </div>
+      </Layout>
+    );
+  }
+
+  // --- Mode B: Explore ---
+  const stepLabels = ['Idioma', 'Set', 'Carta'];
+
+  return (
+    <Layout>
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={() => {
+            if (exploreStep === 1) {
+              resetMode();
+            } else {
+              setExploreStep(exploreStep - 1);
+              if (exploreStep === 2) setExploreLang('');
+              if (exploreStep === 3) setExploreSet('');
+            }
+          }}
+          className="p-3 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 transition"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <h2 className="text-3xl font-black text-slate-950">
+            Explorar catálogo
+          </h2>
           <p className="text-slate-600">
-            Selecciona la expansión, el producto, idioma, estado y precio de venta.
+            Paso {exploreStep} de 3 — {stepLabels[exploreStep - 1]}
           </p>
         </div>
       </div>
-      <div className="grid lg:grid-cols-[1fr_420px] gap-6">
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-          <h3 className="text-xl font-black text-slate-900 mb-4">
-            Información de publicación
-          </h3>
-          <div className="grid gap-4">
-            <div>
-              <label className="text-sm font-bold text-slate-700">
-                Tipo de producto
-              </label>
-              <select
-                value={selectedType}
-                onChange={(e) => changeType(e.target.value)}
-                className="mt-2 w-full border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
-              >
-                <option>Carta single</option>
-                <option>Producto sellado</option>
-              </select>
-            </div>
 
-            <div>
-              <label className="text-sm font-bold text-slate-700">
-                Expansión / set
-              </label>
-              <select
-                value={selectedExpansion}
-                onChange={(e) => changeExpansion(e.target.value)}
-                className="mt-2 w-full border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
-              >
-                {publishExpansions.map((expansion) => (
-                  <option key={expansion} value={expansion}>
-                    {expansion}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-slate-400 mt-1">
-                Primero selecciona la expansión para limitar las cartas o productos disponibles.
-              </p>
-            </div>
-
-            <div>
-              <label className="text-sm font-bold text-slate-700">
-                Buscar carta o producto
-              </label>
-              <select
-                value={selectedCard.id}
-                onChange={(e) => changeCard(e.target.value)}
-                className="mt-2 w-full border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
-              >
-                {filteredPublishCards.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} - {c.set}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-sm font-bold text-slate-700">Idioma</label>
-              <select
-                value={selectedLanguage}
-                onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="mt-2 w-full border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
-              >
-                {languageOptions.map((language) => (
-                  <option key={language}>{language}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-sm font-bold text-slate-700">Estado</label>
-              <select
-                value={selectedCondition}
-                onChange={(e) => setSelectedCondition(e.target.value)}
-                className="mt-2 w-full border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
-              >
-                {conditionOptions.map((condition) => (
-                  <option key={condition}>{condition}</option>
-                ))}
-              </select>
-              {selectedType === 'Producto sellado' && (
-                <p className="text-xs text-slate-400 mt-1">
-                  Para producto sellado se valida si está nuevo, con desgaste, golpe,
-                  plástico abierto o incompleto.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="text-sm font-bold text-slate-700">
-                Precio de venta
-              </label>
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                className="mt-2 w-full border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-bold text-slate-700">Fotos</label>
-              <div className="mt-2 border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center bg-slate-50">
-                <PlusCircle className="mx-auto text-blue-600 mb-2" />
-                <p className="font-bold text-slate-800">
-                  Subir fotos del producto
-                </p>
-                <p className="text-sm text-slate-500">
-                  {selectedType === 'Producto sellado'
-                    ? 'Frente, laterales, esquinas, sello/plástico y detalle de caja.'
-                    : 'Frente, reverso, esquinas y detalle de estado.'}
-                </p>
-              </div>
-            </div>
-            <textarea
-              className="border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
-              placeholder="Observaciones sobre estado, envío o condiciones"
-            />
-          </div>
-        </div>
-        <div className="space-y-5">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="font-black text-slate-950 text-xl">
-              Referencia de precio
-            </h3>
-            <div className="flex gap-4 mt-4">
-              <img
-                src={selectedCard.image}
-                className="w-20 rounded-xl bg-slate-50 object-contain"
-              />
-              <div>
-                <p className="font-black">{selectedCard.name}</p>
-                <p className="text-sm text-slate-500">{selectedCard.set}</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {selectedType} · {selectedLanguage}
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3 mt-5">
-              <PriceBox label="Bajo" value={money(selectedCard.low)} />
-              <PriceBox
-                label="Promedio"
-                value={money(selectedCard.marketAvg)}
-                highlight
-              />
-              <PriceBox label="Alto" value={money(selectedCard.high)} />
-            </div>
-            <div className="mt-5 bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
-              <p className="font-black text-slate-900">Precio sugerido</p>
-              <p className="text-2xl font-black text-blue-700">
-                {money(selectedCard.marketAvg)}
-              </p>
-              <p className="text-sm text-slate-600">
-                Basado en historial de publicaciones y ventas recientes.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setPage('publishSuccess')}
-            className="w-full px-5 py-4 rounded-2xl bg-yellow-400 hover:bg-yellow-300 font-black text-slate-900 flex items-center justify-center gap-2"
-          >
-            <Upload size={20} /> Publicar producto
-          </button>
-        </div>
+      <div className="flex gap-2 mb-6">
+        {stepLabels.map((label, i) => (
+          <div
+            key={label}
+            className={`flex-1 h-2 rounded-full ${
+              i < exploreStep ? 'bg-blue-600' : 'bg-slate-200'
+            }`}
+          />
+        ))}
       </div>
+
+      {exploreStep === 1 && (
+        <div className="max-w-3xl">
+          <h3 className="text-xl font-black text-slate-900 mb-4">
+            Selecciona el idioma de la carta
+          </h3>
+          <div className="flex flex-wrap gap-3">
+            {availableLanguages.map((lang) => (
+              <button
+                key={lang}
+                onClick={() => {
+                  setExploreLang(lang);
+                  setExploreStep(2);
+                }}
+                className="px-6 py-4 rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition shadow-sm"
+              >
+                {LANG_LABELS[lang] || lang}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {exploreStep === 2 && (
+        <div className="max-w-4xl">
+          <h3 className="text-xl font-black text-slate-900 mb-1">
+            Selecciona el set
+          </h3>
+          <p className="text-sm text-slate-500 mb-4">
+            {availableSets.length} sets disponibles en{' '}
+            {LANG_LABELS[exploreLang] || exploreLang}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {availableSets.map((setId) => (
+              <button
+                key={setId}
+                onClick={() => {
+                  setExploreSet(setId);
+                  setExploreStep(3);
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition"
+              >
+                {setId}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {exploreStep === 3 && (
+        <div>
+          <h3 className="text-xl font-black text-slate-900 mb-1">
+            Selecciona la carta
+          </h3>
+          <p className="text-sm text-slate-500 mb-4">
+            {setCards.length} cartas en {exploreSet} ·{' '}
+            {LANG_LABELS[exploreLang] || exploreLang}
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {setCards.map((card) => (
+              <button
+                key={card.id}
+                onClick={() => selectCard(card)}
+                className="group bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition"
+              >
+                <div className="bg-gradient-to-br from-blue-50 to-yellow-50 p-3 flex justify-center items-center h-40">
+                  <CardImage
+                    src={card.image_url}
+                    alt={getDisplayName(card)}
+                    className="max-h-full object-contain group-hover:scale-105 transition"
+                    placeholderSize="sm"
+                  />
+                </div>
+                <div className="p-3">
+                  <p className="font-bold text-sm text-slate-900 truncate">
+                    {getDisplayName(card)}
+                  </p>
+                  <p className="text-xs text-slate-400">{card.set_id}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

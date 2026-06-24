@@ -10,6 +10,7 @@ import { SellerProfile } from './pages/SellerProfile';
 import { Checkout } from './pages/Checkout';
 import { OrderSuccess } from './pages/OrderSuccess';
 import { PublishPage } from './pages/PublishPage';
+import { BulkPublishPage } from './pages/BulkPublishPage';
 import { PublishSuccess } from './pages/PublishSuccess';
 import { SellerSale } from './pages/SellerSale';
 import { ShipmentSuccess } from './pages/ShipmentSuccess';
@@ -19,19 +20,20 @@ import { TransactionDetailPage } from './pages/TransactionDetailPage';
 import { CommissionPage } from './pages/CommissionPage';
 import { ContactPage } from './pages/ContactPage';
 import { LoginPage } from './pages/LoginPage';
-import { cards, initialTransactions } from './data/cards';
+import { cards, initialTransactions, type Card } from './data/cards';
+import type { GroupedCard } from './hooks/useCards';
 
 const protectedPages = new Set([
   'checkout', 'publish', 'history', 'transactionDetail',
   'payout', 'sellerSale', 'shipmentSuccess', 'publishSuccess', 'orderSuccess',
-  'commissions',
+  'commissions', 'bulkPublish',
 ]);
 
 function AppContent() {
   const { user } = useAuth();
   const [page, setPage] = useState('home');
   const [redirectAfterLogin, setRedirectAfterLogin] = useState<string | null>(null);
-  const [selectedCard, setSelectedCard] = useState(cards[0]);
+  const [selectedCard, setSelectedCard] = useState<Card | GroupedCard>(cards[0]);
   const [selectedOffer, setSelectedOffer] = useState(cards[0].offers[0]);
   const [selectedSeller, setSelectedSeller] = useState(cards[0].offers[0]);
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -74,7 +76,7 @@ function AppContent() {
           )}
           {page === 'detail' && (
             <DetailPage
-              card={selectedCard}
+              card={selectedCard as Card}
               setPage={navigate}
               setSelectedOffer={setSelectedOffer}
               setSelectedSeller={setSelectedSeller}
@@ -85,7 +87,7 @@ function AppContent() {
           )}
           {page === 'checkout' && (
             <Checkout
-              card={selectedCard}
+              card={selectedCard as Card}
               offer={selectedOffer}
               setPage={navigate}
               setOrderPlaced={setOrderPlaced}
@@ -93,6 +95,7 @@ function AppContent() {
           )}
           {page === 'orderSuccess' && <OrderSuccess setPage={navigate} />}
           {page === 'publish' && <PublishPage setPage={navigate} />}
+          {page === 'bulkPublish' && <BulkPublishPage setPage={navigate} />}
           {page === 'publishSuccess' && <PublishSuccess setPage={navigate} />}
           {page === 'sellerSale' && <SellerSale setPage={navigate} />}
           {page === 'shipmentSuccess' && <ShipmentSuccess setPage={navigate} />}
