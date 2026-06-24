@@ -7,17 +7,22 @@ import {
   MessageCircle,
   Bell,
   User,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export function Header({ page, setPage, notifications }: { page: string; setPage: (page: string) => void; notifications: number }) {
-  const nav = [
+  const { user, signOut } = useAuth();
+
+  const allNav = [
     { key: 'home', label: 'Inicio', icon: Home },
     { key: 'market', label: 'Marketplace', icon: Store },
-    { key: 'publish', label: 'Publicar', icon: Upload },
-    { key: 'history', label: 'Historial', icon: History },
-    { key: 'commissions', label: 'Comisiones', icon: WalletCards },
+    { key: 'publish', label: 'Publicar', icon: Upload, auth: true },
+    { key: 'history', label: 'Historial', icon: History, auth: true },
+    { key: 'commissions', label: 'Comisiones', icon: WalletCards, auth: true },
     { key: 'contact', label: 'Contacto', icon: MessageCircle },
   ];
+  const nav = allNav.filter((item) => !item.auth || user);
   return (
     <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
@@ -65,12 +70,32 @@ export function Header({ page, setPage, notifications }: { page: string; setPage
               </span>
             )}
           </button>
-          <button
-            onClick={() => setPage('login')}
-            className="hidden sm:flex px-4 py-3 rounded-2xl bg-blue-700 text-white font-semibold hover:bg-blue-800 transition items-center gap-2"
-          >
-            <User size={18} /> Ingresar
-          </button>
+          {user ? (
+            <>
+              <button
+                onClick={() => signOut()}
+                className="sm:hidden p-3 rounded-2xl bg-slate-200 text-slate-700 hover:bg-slate-300 transition"
+              >
+                <User size={20} />
+              </button>
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-sm text-slate-600 max-w-[160px] truncate">{user.email}</span>
+                <button
+                  onClick={() => signOut()}
+                  className="px-4 py-3 rounded-2xl bg-slate-200 text-slate-700 font-semibold hover:bg-slate-300 transition flex items-center gap-2"
+                >
+                  <LogOut size={18} /> Cerrar sesión
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={() => setPage('login')}
+              className="flex px-4 py-3 rounded-2xl bg-blue-700 text-white font-semibold hover:bg-blue-800 transition items-center gap-2"
+            >
+              <User size={18} /> <span className="hidden sm:inline">Ingresar</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

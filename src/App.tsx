@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Home, Store, Upload, History, WalletCards, MessageCircle } from 'lucide-react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header';
 import { HomePage } from './pages/HomePage';
 import { Marketplace } from './pages/Marketplace';
@@ -21,8 +21,16 @@ import { ContactPage } from './pages/ContactPage';
 import { LoginPage } from './pages/LoginPage';
 import { cards, initialTransactions } from './data/cards';
 
-export default function App() {
+const protectedPages = new Set([
+  'checkout', 'publish', 'history', 'transactionDetail',
+  'payout', 'sellerSale', 'shipmentSuccess', 'publishSuccess', 'orderSuccess',
+  'commissions',
+]);
+
+function AppContent() {
+  const { user } = useAuth();
   const [page, setPage] = useState('home');
+  const [redirectAfterLogin, setRedirectAfterLogin] = useState<string | null>(null);
   const [selectedCard, setSelectedCard] = useState(cards[0]);
   const [selectedOffer, setSelectedOffer] = useState(cards[0].offers[0]);
   const [selectedSeller, setSelectedSeller] = useState(cards[0].offers[0]);
@@ -33,15 +41,24 @@ export default function App() {
     initialTransactions[0]
   );
   const notifications = orderPlaced ? 1 : 1;
+
+  const navigate = useCallback((target: string) => {
+    if (protectedPages.has(target) && !user) {
+      setRedirectAfterLogin(target);
+      setPage('login');
+    } else {
+      setRedirectAfterLogin(null);
+      setPage(target);
+    }
+  }, [user]);
   return (
-    <AuthProvider>
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <Header page={page} setPage={setPage} notifications={notifications} />
+      <Header page={page} setPage={navigate} notifications={notifications} />
       <AnimatePresence mode="wait">
         <div key={page}>
           {page === 'home' && (
             <HomePage
-              setPage={setPage}
+              setPage={navigate}
               setSelectedCard={setSelectedCard}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -49,7 +66,7 @@ export default function App() {
           )}
           {page === 'market' && (
             <Marketplace
-              setPage={setPage}
+              setPage={navigate}
               setSelectedCard={setSelectedCard}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -58,63 +75,63 @@ export default function App() {
           {page === 'detail' && (
             <DetailPage
               card={selectedCard}
-              setPage={setPage}
+              setPage={navigate}
               setSelectedOffer={setSelectedOffer}
               setSelectedSeller={setSelectedSeller}
             />
           )}
           {page === 'sellerProfile' && (
-            <SellerProfile seller={selectedSeller} setPage={setPage} />
+            <SellerProfile seller={selectedSeller} setPage={navigate} />
           )}
           {page === 'checkout' && (
             <Checkout
               card={selectedCard}
               offer={selectedOffer}
-              setPage={setPage}
+              setPage={navigate}
               setOrderPlaced={setOrderPlaced}
             />
           )}
-          {page === 'orderSuccess' && <OrderSuccess setPage={setPage} />}
-          {page === 'publish' && <PublishPage setPage={setPage} />}
-          {page === 'publishSuccess' && <PublishSuccess setPage={setPage} />}
-          {page === 'sellerSale' && <SellerSale setPage={setPage} />}
-          {page === 'shipmentSuccess' && <ShipmentSuccess setPage={setPage} />}
-          {page === 'payout' && <PayoutPage setPage={setPage} />}
+          {page === 'orderSuccess' && <OrderSuccess setPage={navigate} />}
+          {page === 'publish' && <PublishPage setPage={navigate} />}
+          {page === 'publishSuccess' && <PublishSuccess setPage={navigate} />}
+          {page === 'sellerSale' && <SellerSale setPage={navigate} />}
+          {page === 'shipmentSuccess' && <ShipmentSuccess setPage={navigate} />}
+          {page === 'payout' && <PayoutPage setPage={navigate} />}
           {page === 'history' && (
             <HistoryPage
               transactions={transactions}
               setTransactions={setTransactions}
-              setPage={setPage}
+              setPage={navigate}
               setSelectedTransaction={setSelectedTransaction}
             />
           )}
           {page === 'transactionDetail' && (
             <TransactionDetailPage
               transaction={selectedTransaction}
-              setPage={setPage}
+              setPage={navigate}
               setTransactions={setTransactions}
               setSelectedTransaction={setSelectedTransaction}
             />
           )}
           {page === 'commissions' && <CommissionPage />}
           {page === 'contact' && <ContactPage />}
-          {page === 'login' && <LoginPage setPage={setPage} />}
+          {page === 'login' && <LoginPage setPage={navigate} redirectTo={redirectAfterLogin} />}
         </div>
       </AnimatePresence>
-      <div className="md:hidden fixed bottom-3 left-3 right-3 bg-white border border-slate-200 rounded-3xl shadow-xl p-2 grid grid-cols-6 gap-1 z-50">
+      <div className="md:hidden fixed bottom-3 left-3 right-3 bg-white border border-slate-200 rounded-3xl shadow-xl p-2 flex justify-around z-50">
         {[
-          { key: 'home', icon: Home, label: 'Inicio' },
-          { key: 'market', icon: Store, label: 'Buscar' },
-          { key: 'publish', icon: Upload, label: 'Vender' },
-          { key: 'history', icon: History, label: 'Historial' },
-          { key: 'commissions', icon: WalletCards, label: 'Comisión' },
-          { key: 'contact', icon: MessageCircle, label: 'Contacto' },
-        ].map((item) => {
+          { key: 'home', icon: Home, label: 'Inicio', auth: false },
+          { key: 'market', icon: Store, label: 'Buscar', auth: false },
+          { key: 'publish', icon: Upload, label: 'Vender', auth: true },
+          { key: 'history', icon: History, label: 'Historial', auth: true },
+          { key: 'commissions', icon: WalletCards, label: 'Comisión', auth: true },
+          { key: 'contact', icon: MessageCircle, label: 'Contacto', auth: false },
+        ].filter((item) => !item.auth || user).map((item) => {
           const Icon = item.icon;
           return (
             <button
               key={item.key}
-              onClick={() => setPage(item.key)}
+              onClick={() => navigate(item.key)}
               className={`py-2 rounded-2xl text-xs font-bold flex flex-col items-center gap-1 ${
                 page === item.key ? 'bg-blue-600 text-white' : 'text-slate-500'
               }`}
@@ -126,6 +143,13 @@ export default function App() {
         })}
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
     </AuthProvider>
   );
 }

@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 
-export function LoginPage({ setPage }: { setPage: (page: string) => void }) {
+interface LoginPageProps {
+  setPage: (page: string) => void;
+  redirectTo?: string | null;
+}
+
+export function LoginPage({ setPage, redirectTo }: LoginPageProps) {
   const { signIn, signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +24,7 @@ export function LoginPage({ setPage }: { setPage: (page: string) => void }) {
     if (error) {
       setError(error);
     } else {
-      setPage('home');
+      setPage(redirectTo ?? 'home');
     }
   }
 

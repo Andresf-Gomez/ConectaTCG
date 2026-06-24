@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { SearchBar } from '../components/SearchBar';
 import { CardTile } from '../components/CardTile';
@@ -44,6 +45,7 @@ export function Marketplace({
   const [languageFilter, setLanguageFilter] = useState('Todos');
   const [minPrice, setMinPrice] = useState(lowestPrice);
   const [maxPrice, setMaxPrice] = useState(highestPrice);
+  const [showFilters, setShowFilters] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -151,8 +153,16 @@ export function Marketplace({
         ))}
       </div>
 
-      <div className="grid grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
-        <aside className="sticky top-24 bg-white border border-slate-200 rounded-3xl p-5 h-fit shadow-sm">
+      <button
+        onClick={() => setShowFilters(!showFilters)}
+        className="md:hidden mb-4 px-5 py-3 rounded-2xl bg-white border border-slate-200 text-sm font-black text-slate-700 flex items-center gap-2 shadow-sm"
+      >
+        {showFilters ? <X size={18} /> : <SlidersHorizontal size={18} />}
+        {showFilters ? 'Cerrar filtros' : 'Filtros'}
+      </button>
+
+      <div className="grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
+        <aside className={`${showFilters ? 'block' : 'hidden'} md:block sticky top-24 bg-white border border-slate-200 rounded-3xl p-5 h-fit shadow-sm`}>
           <div className="flex items-center justify-between gap-3 mb-4">
             <h3 className="font-black text-slate-900">Filtros</h3>
             <button
@@ -288,7 +298,7 @@ export function Marketplace({
                       </span>
                     </div>
                   </div>
-                  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {group.items.map((card) => (
                       <CardTile
                         key={card.id}
