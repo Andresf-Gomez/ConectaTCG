@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Home, Store, Upload, History, WalletCards, MessageCircle } from 'lucide-react';
+import { AuthProvider } from './context/AuthContext';
 import { Header } from './components/Header';
 import { HomePage } from './pages/HomePage';
 import { Marketplace } from './pages/Marketplace';
@@ -33,6 +34,7 @@ export default function App() {
   );
   const notifications = orderPlaced ? 1 : 1;
   return (
+    <AuthProvider>
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Header page={page} setPage={setPage} notifications={notifications} />
       <AnimatePresence mode="wait">
@@ -124,5 +126,6 @@ export default function App() {
         })}
       </div>
     </div>
+    </AuthProvider>
   );
 }
