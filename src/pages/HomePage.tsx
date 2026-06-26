@@ -19,10 +19,10 @@ export function HomePage({ setPage, setSelectedCard, searchQuery, setSearchQuery
           <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-300 text-slate-900 text-sm font-black mb-5 shadow-sm">
             <ShieldCheck size={17} /> Compra protegida para cartas TCG
           </span>
-          <h2 className="text-3xl md:text-6xl font-black text-slate-950 leading-tight">
+          <h2 className="text-3xl md:text-6xl font-black text-slate-950 dark:text-white leading-tight">
             Conecta TCG: compra y vende cartas Pokémon TCG con confianza.
           </h2>
-          <p className="text-lg text-slate-600 mt-5 max-w-xl">
+          <p className="text-lg text-slate-600 dark:text-slate-300 mt-5 max-w-xl">
             Busca cartas singles o producto sellado, compara vendedores, revisa
             reseñas y paga de forma segura hasta confirmar la recepción.
           </p>

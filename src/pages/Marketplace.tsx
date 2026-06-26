@@ -107,7 +107,7 @@ export function Marketplace({
     `px-3 py-1.5 rounded-full text-[11px] font-bold border transition whitespace-nowrap ${
       active
         ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-        : 'bg-white text-slate-700 border-slate-200 hover:bg-yellow-50 hover:border-yellow-300'
+        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-yellow-50 dark:hover:bg-slate-700 hover:border-yellow-300 dark:hover:border-slate-600'
     }`;
 
   const singles = filtered.filter((card) => card.type === 'Carta single');
@@ -136,8 +136,8 @@ export function Marketplace({
     <Layout>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-3xl font-black text-slate-950">Marketplace Conecta TCG</h2>
-          <p className="text-slate-600">
+          <h2 className="text-3xl font-black text-slate-950 dark:text-white">Marketplace Conecta TCG</h2>
+          <p className="text-slate-600 dark:text-slate-300">
             Compara cartas, productos sellados, vendedores, precios, idioma y reputación.
           </p>
         </div>
@@ -154,7 +154,7 @@ export function Marketplace({
             className={`px-5 py-2.5 rounded-2xl text-sm font-black border transition ${
               segmentFilter === type
                 ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-blue-50'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-700'
             }`}
           >
             {type}
@@ -164,26 +164,26 @@ export function Marketplace({
 
       <button
         onClick={() => setShowFilters(!showFilters)}
-        className="md:hidden mb-4 px-5 py-3 rounded-2xl bg-white border border-slate-200 text-sm font-black text-slate-700 flex items-center gap-2 shadow-sm"
+        className="md:hidden mb-4 px-5 py-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-black text-slate-700 dark:text-slate-300 flex items-center gap-2 shadow-sm"
       >
         {showFilters ? <X size={18} /> : <SlidersHorizontal size={18} />}
         {showFilters ? 'Cerrar filtros' : 'Filtros'}
       </button>
 
       <div className="grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
-        <aside className={`${showFilters ? 'block' : 'hidden'} md:block sticky top-24 bg-white border border-slate-200 rounded-3xl p-5 h-fit shadow-sm`}>
+        <aside className={`${showFilters ? 'block' : 'hidden'} md:block sticky top-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 h-fit shadow-sm`}>
           <div className="flex items-center justify-between gap-3 mb-4">
-            <h3 className="font-black text-slate-900">Filtros</h3>
+            <h3 className="font-black text-slate-900 dark:text-white">Filtros</h3>
             <button
               onClick={resetFilters}
-              className="text-xs font-bold text-blue-700 hover:text-blue-900"
+              className="text-xs font-bold text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
             >
               Limpiar
             </button>
           </div>
 
-          <div className="py-3 border-b border-slate-100">
-            <p className="text-sm font-bold text-slate-700 mb-3">Idioma</p>
+          <div className="py-3 border-b border-slate-100 dark:border-slate-700">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Idioma</p>
             <div className="flex flex-wrap gap-2">
               {languages.map((language) => (
                 <button
@@ -197,8 +197,8 @@ export function Marketplace({
             </div>
           </div>
 
-          <div className="py-3 border-b border-slate-100">
-            <p className="text-sm font-bold text-slate-700 mb-3">Ciudad</p>
+          <div className="py-3 border-b border-slate-100 dark:border-slate-700">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Ciudad</p>
             <div className="flex flex-wrap gap-2">
               {cities.map((city) => (
                 <button
@@ -212,15 +212,15 @@ export function Marketplace({
             </div>
           </div>
 
-          <div className="py-3 border-b border-slate-100">
+          <div className="py-3 border-b border-slate-100 dark:border-slate-700">
             <div className="flex items-center justify-between gap-3 mb-3">
-              <p className="text-sm font-bold text-slate-700">
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
                 Rango de precio
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] font-bold text-slate-500">
+                <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                   Mínimo
                 </label>
                 <input
@@ -229,12 +229,12 @@ export function Marketplace({
                   step={10000}
                   value={minPrice}
                   onChange={(e) => setMinPrice(Number(e.target.value) || 0)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none focus:border-blue-500"
+                  className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3 py-2 text-xs font-bold outline-none focus:border-blue-500"
                   placeholder="Ej: 50000"
                 />
               </div>
               <div>
-                <label className="text-[11px] font-bold text-slate-500">
+                <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                   Máximo
                 </label>
                 <input
@@ -245,18 +245,18 @@ export function Marketplace({
                   onChange={(e) =>
                     setMaxPrice(Number(e.target.value) || highestPrice)
                   }
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold outline-none focus:border-blue-500"
+                  className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-3 py-2 text-xs font-bold outline-none focus:border-blue-500"
                   placeholder="Ej: 300000"
                 />
               </div>
             </div>
-            <p className="mt-2 text-[11px] text-slate-400">
+            <p className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
               Rango disponible: {money(lowestPrice)} - {money(highestPrice)}
             </p>
           </div>
 
-          <div className="py-3 border-b border-slate-100">
-            <p className="text-sm font-bold text-slate-700 mb-3">Expansión</p>
+          <div className="py-3 border-b border-slate-100 dark:border-slate-700">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Expansión</p>
             <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto pr-1">
               {expansions.map((expansion) => (
                 <button
@@ -270,26 +270,26 @@ export function Marketplace({
             </div>
           </div>
 
-          <div className="pt-3 text-xs text-slate-500">
-            Mostrando <b className="text-slate-900">{visibleFiltered.length}</b>{' '}
+          <div className="pt-3 text-xs text-slate-500 dark:text-slate-400">
+            Mostrando <b className="text-slate-900 dark:text-white">{visibleFiltered.length}</b>{' '}
             producto(s)
           </div>
         </aside>
 
         <section className="space-y-8">
           {cardsLoading ? (
-            <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-12 text-center">
               <Loader2 className="mx-auto animate-spin text-blue-600 mb-3" size={32} />
-              <p className="text-lg font-black text-slate-900">Cargando productos...</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">Cargando productos...</p>
             </div>
           ) : visibleFiltered.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center">
-              <p className="text-xl font-black text-slate-900">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 text-center">
+              <p className="text-xl font-black text-slate-900 dark:text-white">
                 {allCards.length === 0
                   ? 'Aún no hay cartas publicadas. ¡Sé el primero en vender!'
                   : 'No encontramos productos con esos filtros'}
               </p>
-              <p className="text-slate-500 mt-2">
+              <p className="text-slate-500 dark:text-slate-400 mt-2">
                 {allCards.length === 0
                   ? 'Publica tu primera carta desde la sección de venta.'
                   : 'Limpia los filtros o amplía el rango de precio para ver más opciones.'}
@@ -298,16 +298,16 @@ export function Marketplace({
           ) : (
             visibleGroups.map((group) =>
               group.items.length > 0 ? (
-                <div key={group.title} className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className={`mb-4 rounded-3xl p-5 ${group.accent === 'blue' ? 'bg-blue-50 border border-blue-100' : 'bg-yellow-50 border border-yellow-200'}`}>
+                <div key={group.title} className="rounded-[2rem] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
+                  <div className={`mb-4 rounded-3xl p-5 ${group.accent === 'blue' ? 'bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900' : 'bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-900/50'}`}>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                       <div className="flex items-start gap-3">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${group.accent === 'blue' ? 'bg-blue-600' : 'bg-yellow-400'}`}>
                           {group.icon}
                         </div>
                         <div>
-                          <h3 className="text-2xl font-black text-slate-950">{group.title}</h3>
-                          <p className="text-sm text-slate-600 mt-1">{group.description}</p>
+                          <h3 className="text-2xl font-black text-slate-950 dark:text-white">{group.title}</h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{group.description}</p>
                         </div>
                       </div>
                       <span className={`w-fit px-4 py-2 rounded-full text-sm font-black ${group.accent === 'blue' ? 'bg-blue-600 text-white' : 'bg-yellow-400 text-slate-950'}`}>

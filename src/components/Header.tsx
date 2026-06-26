@@ -8,11 +8,16 @@ import {
   Bell,
   LogOut,
   User,
+  Sun,
+  Moon,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export function Header({ page, setPage, notifications }: { page: string; setPage: (page: string) => void; notifications: number }) {
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const allNav = [
     { key: 'home', label: 'Inicio', icon: Home },
@@ -21,10 +26,11 @@ export function Header({ page, setPage, notifications }: { page: string; setPage
     { key: 'history', label: 'Historial', icon: History, auth: true },
     { key: 'commissions', label: 'Comisiones', icon: WalletCards, auth: true },
     { key: 'contact', label: 'Contacto', icon: MessageCircle },
+    { key: 'admin', label: 'Admin', icon: ShieldCheck, adminOnly: true },
   ];
-  const nav = allNav.filter((item) => !item.auth || user);
+  const nav = allNav.filter((item) => (!item.auth || user) && (!item.adminOnly || role === 'admin'));
   return (
-    <div className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200">
+    <div className="sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
         <button
           onClick={() => setPage('home')}
@@ -34,13 +40,13 @@ export function Header({ page, setPage, notifications }: { page: string; setPage
             <span className="font-black text-yellow-300 text-lg">CT</span>
           </div>
           <div className="text-left">
-            <h1 className="font-bold text-slate-900 leading-tight">
+            <h1 className="font-bold text-slate-900 dark:text-white leading-tight">
               Conecta TCG 🃏
             </h1>
-            <p className="text-xs text-slate-500 -mt-1">Marketplace especializado</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-1">Marketplace especializado</p>
           </div>
         </button>
-        <div className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
+        <div className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
           {nav.map((item) => {
             const Icon = item.icon;
             return (
@@ -49,8 +55,8 @@ export function Header({ page, setPage, notifications }: { page: string; setPage
                 onClick={() => setPage(item.key)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition ${
                   page === item.key
-                    ? 'bg-white text-blue-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <Icon size={16} /> {item.label}
@@ -60,8 +66,15 @@ export function Header({ page, setPage, notifications }: { page: string; setPage
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={toggleTheme}
+            className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button
             onClick={() => setPage('sellerSale')}
-            className="relative p-3 rounded-2xl bg-yellow-100 text-slate-900 hover:bg-yellow-200 transition"
+            className="relative p-3 rounded-2xl bg-yellow-100 dark:bg-yellow-900/40 text-slate-900 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-900/60 transition"
           >
             <Bell size={20} />
             {notifications > 0 && (
@@ -77,7 +90,7 @@ export function Header({ page, setPage, notifications }: { page: string; setPage
               </div>
               <button
                 onClick={() => signOut()}
-                className="p-2.5 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
                 title="Cerrar sesión"
               >
                 <LogOut size={18} />

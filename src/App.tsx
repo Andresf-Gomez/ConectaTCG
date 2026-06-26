@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Home, Store, Upload, History, WalletCards, MessageCircle } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Header } from './components/Header';
 import { HomePage } from './pages/HomePage';
 import { Marketplace } from './pages/Marketplace';
@@ -54,7 +55,7 @@ function AppContent() {
     }
   }, [user]);
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <Header page={page} setPage={navigate} notifications={notifications} />
       <AnimatePresence mode="wait">
         <div key={page}>
@@ -121,7 +122,7 @@ function AppContent() {
           {page === 'login' && <LoginPage setPage={navigate} redirectTo={redirectAfterLogin} />}
         </div>
       </AnimatePresence>
-      <div className="md:hidden fixed bottom-3 left-3 right-3 bg-white border border-slate-200 rounded-3xl shadow-xl p-2 flex justify-around z-50">
+      <div className="md:hidden fixed bottom-3 left-3 right-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-xl p-2 flex justify-around z-50">
         {[
           { key: 'home', icon: Home, label: 'Inicio', auth: false },
           { key: 'market', icon: Store, label: 'Buscar', auth: false },
@@ -136,7 +137,7 @@ function AppContent() {
               key={item.key}
               onClick={() => navigate(item.key)}
               className={`py-2 px-3 rounded-2xl text-xs font-bold flex flex-col items-center gap-1 transition ${
-                page === item.key ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-800'
+                page === item.key ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
               }`}
             >
               <Icon size={18} />
@@ -151,8 +152,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

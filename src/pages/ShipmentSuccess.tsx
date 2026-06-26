@@ -4,10 +4,10 @@ import { Layout } from '../components/Layout';
 export function ShipmentSuccess({ setPage }: { setPage: (page: string) => void }) {
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto bg-white rounded-[2rem] border border-slate-200 p-8 text-center shadow-sm">
+      <div className="max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-700 p-8 text-center shadow-sm">
         <Truck className="mx-auto text-blue-600 mb-4" size={58} />
-        <h2 className="text-4xl font-black text-slate-950">Envío registrado</h2>
-        <p className="text-slate-600 mt-3">
+        <h2 className="text-4xl font-black text-slate-950 dark:text-white">Envío registrado</h2>
+        <p className="text-slate-600 dark:text-slate-300 mt-3">
           El comprador fue notificado. Cuando confirme la recepción, podrás
           solicitar el desembolso.
         </p>
