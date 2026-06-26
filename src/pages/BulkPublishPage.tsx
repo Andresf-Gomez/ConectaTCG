@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ArrowLeft, Plus, Upload, Eye, EyeOff, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Upload, Eye, EyeOff, X, Loader2, Copy } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { CardImage } from '../components/ImagePlaceholder';
 import { supabase } from '../lib/supabase';
@@ -95,9 +95,14 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
   const getCardsForSet = useCallback(
     (lang: string, setId: string) => {
       if (!lang || !setId) return [];
-      return catalog.filter(
-        (c) => c.set_id === setId && c.languages.includes(lang)
-      );
+      return catalog
+        .filter((c) => c.set_id === setId && c.languages.includes(lang))
+        .sort((a, b) => {
+          const na = parseInt(a.localId, 10);
+          const nb = parseInt(b.localId, 10);
+          if (!isNaN(na) && !isNaN(nb)) return na - nb;
+          return a.localId.localeCompare(b.localId);
+        });
     },
     [catalog]
   );
@@ -124,6 +129,24 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
       return next.length === 0 ? [emptyRow(nextKey)] : next;
     });
     if (rows.length <= 1) setNextKey((k) => k + 1);
+  }
+
+  function duplicateRow(key: number) {
+    setRows((prev) => {
+      const idx = prev.findIndex((r) => r.key === key);
+      if (idx === -1) return prev;
+      const src = prev[idx];
+      const newRow: BulkRow = {
+        ...src,
+        key: nextKey,
+        price: 0,
+        description: '',
+      };
+      const next = [...prev];
+      next.splice(idx + 1, 0, newRow);
+      return next;
+    });
+    setNextKey((k) => k + 1);
   }
 
   function changeLang(key: number, lang: string) {
@@ -425,15 +448,24 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                       )}
                     </td>
 
-                    {/* Eliminar */}
+                    {/* Duplicar / Eliminar */}
                     <td className="px-3 py-2">
-                      <button
-                        onClick={() => removeRow(row.key)}
-                        className="p-2 rounded-xl hover:bg-red-50 transition text-slate-400 hover:text-red-600"
-                        title="Eliminar fila"
-                      >
-                        <X size={16} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => duplicateRow(row.key)}
+                          className="p-2 rounded-xl hover:bg-blue-50 transition text-slate-400 hover:text-blue-600"
+                          title="Duplicar fila"
+                        >
+                          <Copy size={16} />
+                        </button>
+                        <button
+                          onClick={() => removeRow(row.key)}
+                          className="p-2 rounded-xl hover:bg-red-50 transition text-slate-400 hover:text-red-600"
+                          title="Eliminar fila"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

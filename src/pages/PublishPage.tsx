@@ -108,9 +108,14 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
 
   const setCards = useMemo(() => {
     if (!exploreLang || !exploreSet) return [];
-    return catalog.filter(
-      (c) => c.set_id === exploreSet && c.languages.includes(exploreLang)
-    );
+    return catalog
+      .filter((c) => c.set_id === exploreSet && c.languages.includes(exploreLang))
+      .sort((a, b) => {
+        const na = parseInt(a.localId, 10);
+        const nb = parseInt(b.localId, 10);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return a.localId.localeCompare(b.localId);
+      });
   }, [exploreLang, exploreSet, catalog]);
 
   function selectCard(card: CatalogCard) {

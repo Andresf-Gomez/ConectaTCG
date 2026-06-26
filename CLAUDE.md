@@ -36,3 +36,30 @@ The entire app lives in a single file: `src/App.tsx`. It contains:
 ## Styling
 
 All styling uses Tailwind CSS v4 utility classes inline. The `src/index.css` file only contains `@import "tailwindcss"`. No custom CSS, no component library.
+
+## Sesiones activas y división de responsabilidades
+
+Hay dos sesiones de Claude trabajando en paralelo en este proyecto. Para evitar conflictos, cada una tiene archivos propios. **No tocar los archivos de la otra sesión sin coordinación.**
+
+### Sesión BACKEND / FUNCIONALIDAD (esta sesión)
+Foco: lógica de negocio, flujos de publicación, integración con Supabase, procesamiento del catálogo.
+Responsable de:
+- `src/pages/BulkPublishPage.tsx`
+- `src/pages/PublishPage.tsx`
+- `src/hooks/useCatalog.ts`
+- `scripts/process-catalog.cjs`
+- `public/catalog.json`
+
+### Sesión UX/UI (otra sesión)
+Foco: diseño visual, responsive, componentes compartidos.
+Responsable de:
+- `src/components/` en general (Header, Layout, CardTile, SearchBar, InfoPill, ImagePlaceholder, etc.)
+- `src/App.tsx`
+- `src/pages/HomePage.tsx`
+- `src/pages/Marketplace.tsx`
+- `src/index.css`
+
+### Archivos compartidos — coordinar antes de editar
+- `src/hooks/useCatalog.ts` exporta tipos (`CatalogCard`) que ambas sesiones usan. Avisar si se necesita cambiar la interfaz.
+- `package.json` / `package-lock.json` — no agregar dependencias sin avisar.
+- Páginas con lógica + UI mezclada (`BulkPublishPage`, `PublishPage`): la sesión Backend maneja la lógica, la sesión UX/UI consulta antes de cambiar estilos.
