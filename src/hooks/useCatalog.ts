@@ -2,10 +2,15 @@ import { useEffect, useState } from 'react';
 
 export interface CatalogCard {
   id: string;
+  localId: string;
   names: Record<string, string>;
+  setNames: Record<string, string>;
   set_id: string;
+  year: number | null;
   image_url: string;
   languages: string[];
+  rarity: string;
+  variants: string[];
 }
 
 let cache: CatalogCard[] | null = null;

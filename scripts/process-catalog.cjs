@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const INPUT = path.resolve('D:/Users/ANDRI/Downloads/pokemon_tcg_tcgdex.json');
-const OUTPUT = path.resolve(__dirname, '..', 'src', 'data', 'catalog.json');
+const INPUT = path.resolve('C:/Users/ANDRI/Documentos/Dev/PokemonTCG_BaseDatos/base_depurada.json');
+const OUTPUT = path.resolve(__dirname, '..', 'public', 'catalog.json');
 
 console.log('Leyendo archivo fuente...');
 const raw = JSON.parse(fs.readFileSync(INPUT, 'utf-8'));
@@ -10,25 +10,69 @@ const entries = Object.values(raw.cards);
 
 console.log(`Procesando ${entries.length} cartas...`);
 
+// Canonical variant keys from the boolean variants object (en, camelCase).
+// Used to normalize type strings from variants_detailed across languages.
+const KNOWN_VARIANTS = ['holo', 'normal', 'reverse', 'firstEdition', 'wPromo'];
+const VARIANT_LOWER_MAP = Object.fromEntries(KNOWN_VARIANTS.map((v) => [v.toLowerCase(), v]));
+
+function normalizeVariantType(type) {
+  const lower = type.toLowerCase().replace(/\s+/g, '');
+  return VARIANT_LOWER_MAP[lower] || lower;
+}
+
 const catalog = entries.map((card) => {
   const dataLangs = card.data ? Object.keys(card.data) : [];
-  let imageUrl = '';
 
+  // image_url: prefer English, fall back to first available language
+  let imageUrl = '';
   if (card.data?.en?.image) {
     imageUrl = card.data.en.image + '/high.png';
   } else if (dataLangs.length > 0) {
-    const firstLang = dataLangs[0];
-    if (card.data[firstLang]?.image) {
-      imageUrl = card.data[firstLang].image + '/high.png';
+    const img = card.data[dataLangs[0]]?.image;
+    if (img) imageUrl = img + '/high.png';
+  }
+
+  // year: top-level field in source data
+  const year = card.year ?? null;
+
+  // rarity: English first, then first available lang
+  let rarity = '';
+  if (card.data?.en?.rarity) {
+    rarity = card.data.en.rarity;
+  } else if (dataLangs.length > 0) {
+    rarity = card.data[dataLangs[0]]?.rarity || '';
+  }
+
+  // variants: unique types from variants_detailed across ALL languages,
+  // normalized to canonical camelCase form (English as reference).
+  // English entries are collected first to give them priority in dedup.
+  const seen = new Map(); // normalized_lower → canonical
+  const orderedLangs = dataLangs.includes('en')
+    ? ['en', ...dataLangs.filter((l) => l !== 'en')]
+    : dataLangs;
+
+  for (const lang of orderedLangs) {
+    const detailed = card.data[lang]?.variants_detailed || [];
+    for (const v of detailed) {
+      if (!v.type) continue;
+      const canonical = normalizeVariantType(v.type);
+      const lower = canonical.toLowerCase();
+      if (!seen.has(lower)) seen.set(lower, canonical);
     }
   }
+  const variants = Array.from(seen.values());
 
   return {
     id: card.id,
+    localId: card.localId || '',
     names: card.names || {},
+    setNames: card.setNames || {},
     set_id: card.set?.id || '',
+    year,
     image_url: imageUrl,
     languages: card.languages || [],
+    rarity,
+    variants,
   };
 });
 
@@ -39,3 +83,9 @@ const sizeMB = (Buffer.byteLength(json, 'utf-8') / (1024 * 1024)).toFixed(2);
 console.log(`Cartas procesadas: ${catalog.length}`);
 console.log(`Archivo generado: ${OUTPUT}`);
 console.log(`Tamaño: ${sizeMB} MB`);
+
+// Quick sanity stats
+const withYear = catalog.filter((c) => c.year !== null).length;
+const withVariants = catalog.filter((c) => c.variants.length > 0).length;
+console.log(`Con año: ${withYear} / ${catalog.length}`);
+console.log(`Con variantes: ${withVariants} / ${catalog.length}`);

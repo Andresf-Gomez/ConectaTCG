@@ -24,6 +24,7 @@ const CITIES = [
   'Santa Marta',
   'Ibagué',
 ];
+
 export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
   const { user } = useAuth();
   const { catalog, loading: catalogLoading } = useCatalog();
@@ -34,10 +35,12 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
   // Search mode
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Explore mode
+  // Explore mode: 5 steps — Idioma → Año → Expansión → Carta → Variante
   const [exploreStep, setExploreStep] = useState(1);
   const [exploreLang, setExploreLang] = useState('');
+  const [exploreYear, setExploreYear] = useState<number | null>(null);
   const [exploreSet, setExploreSet] = useState('');
+  const [exploreVariant, setExploreVariant] = useState('');
 
   // Publish form
   const [price, setPrice] = useState(0);
@@ -64,7 +67,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
     return results;
   }, [searchTerm, catalog]);
 
-  // --- Explore mode logic ---
+  // --- Explore mode computed values ---
   const availableLanguages = useMemo(() => {
     const langs = new Set<string>();
     for (const card of catalog) {
@@ -75,14 +78,33 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
     );
   }, [catalog]);
 
-  const availableSets = useMemo(() => {
+  const availableYears = useMemo(() => {
     if (!exploreLang) return [];
-    const sets = new Set<string>();
+    const years = new Set<number>();
     for (const card of catalog) {
-      if (card.languages.includes(exploreLang)) sets.add(card.set_id);
+      if (card.languages.includes(exploreLang) && card.year != null) {
+        years.add(card.year);
+      }
     }
-    return Array.from(sets).sort();
+    return Array.from(years).sort((a, b) => b - a);
   }, [exploreLang, catalog]);
+
+  const availableSets = useMemo(() => {
+    if (!exploreLang || exploreYear == null) return [] as { id: string; name: string }[];
+    const seen = new Map<string, string>();
+    for (const card of catalog) {
+      if (
+        card.languages.includes(exploreLang) &&
+        card.year === exploreYear &&
+        !seen.has(card.set_id)
+      ) {
+        seen.set(card.set_id, card.setNames[exploreLang] || card.set_id);
+      }
+    }
+    return Array.from(seen.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [exploreLang, exploreYear, catalog]);
 
   const setCards = useMemo(() => {
     if (!exploreLang || !exploreSet) return [];
@@ -93,11 +115,14 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
 
   function selectCard(card: CatalogCard) {
     setSelectedCard(card);
+    setExploreStep(5);
   }
 
   function resetSelection() {
     setSelectedCard(null);
+    setExploreVariant('');
     setSearchTerm('');
+    setExploreStep(4);
   }
 
   function resetMode() {
@@ -106,7 +131,28 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
     setSearchTerm('');
     setExploreStep(1);
     setExploreLang('');
+    setExploreYear(null);
     setExploreSet('');
+    setExploreVariant('');
+  }
+
+  function goBack() {
+    if (exploreStep === 5) {
+      setSelectedCard(null);
+      setExploreVariant('');
+      setExploreStep(4);
+    } else if (exploreStep === 4) {
+      setExploreSet('');
+      setExploreStep(3);
+    } else if (exploreStep === 3) {
+      setExploreYear(null);
+      setExploreStep(2);
+    } else if (exploreStep === 2) {
+      setExploreLang('');
+      setExploreStep(1);
+    } else {
+      resetMode();
+    }
   }
 
   async function handlePublish() {
@@ -118,7 +164,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
       name: getDisplayName(selectedCard),
       set_name: selectedCard.set_id,
       number: selectedCard.id,
-      rarity: '',
+      rarity: selectedCard.rarity,
       type: 'Carta single',
       language: exploreLang || selectedCard.languages[0] || 'en',
       image: selectedCard.image_url,
@@ -127,6 +173,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
       city,
       description,
       seller_name: user?.email ?? 'Vendedor',
+      variant: exploreVariant,
     });
     setPublishing(false);
     if (error) {
@@ -145,14 +192,14 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
           <p className="text-lg font-black text-slate-900">
             Cargando catálogo de cartas...
           </p>
-          <p className="text-sm text-slate-500 mt-1">35,793 cartas disponibles</p>
+          <p className="text-sm text-slate-500 mt-1">26,162 cartas disponibles</p>
         </div>
       </Layout>
     );
   }
 
-  // --- Card selected → show publish form ---
-  if (selectedCard) {
+  // --- Card + variant selected → publish form ---
+  if (selectedCard && exploreVariant) {
     return (
       <Layout>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
@@ -248,16 +295,18 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                 <p className="font-black text-lg text-slate-900">
                   {getDisplayName(selectedCard)}
                 </p>
-                <p className="text-sm text-slate-500">{selectedCard.set_id}</p>
+                <p className="text-sm text-slate-500">
+                  {selectedCard.setNames[exploreLang] || selectedCard.set_id}
+                </p>
                 <p className="text-xs text-slate-400 mt-1">
-                  Idiomas: {selectedCard.languages.map((l) => LANG_LABELS[l] || l).join(', ')}
+                  {LANG_LABELS[exploreLang] || exploreLang} · {exploreVariant}
                 </p>
               </div>
               <button
                 onClick={resetSelection}
                 className="mt-4 w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 transition"
               >
-                Cambiar carta
+                Cambiar variante
               </button>
             </div>
 
@@ -317,8 +366,8 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
               Explorar catálogo
             </h3>
             <p className="text-sm text-slate-500 mt-2">
-              Navega paso a paso: idioma, set y carta. Ideal si no recuerdas el
-              nombre exacto.
+              Navega paso a paso: idioma, año, set y carta. Ideal si no recuerdas
+              el nombre exacto.
             </p>
           </button>
           <button
@@ -381,7 +430,10 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
               {suggestions.map((card) => (
                 <button
                   key={card.id}
-                  onClick={() => selectCard(card)}
+                  onClick={() => {
+                    setSelectedCard(card);
+                    setExploreStep(5);
+                  }}
                   className="w-full flex items-center gap-4 p-4 hover:bg-blue-50 transition text-left border-b border-slate-100 last:border-0"
                 >
                   <div className="w-12 h-16 rounded-lg bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden">
@@ -396,7 +448,9 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                     <p className="font-black text-slate-900 truncate">
                       {getDisplayName(card)}
                     </p>
-                    <p className="text-sm text-slate-500">{card.set_id}</p>
+                    <p className="text-sm text-slate-500">
+                      #{card.localId} · {card.set_id}
+                    </p>
                     <p className="text-xs text-slate-400">
                       {card.languages
                         .map((l) => LANG_LABELS[l] || l)
@@ -419,26 +473,63 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
             </div>
           )}
         </div>
+
+        {/* Variant step reached from search */}
+        {selectedCard && !exploreVariant && (
+          <div className="mt-6 max-w-2xl">
+            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-16 h-20 rounded-xl bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                  <CardImage
+                    src={selectedCard.image_url}
+                    alt={getDisplayName(selectedCard)}
+                    className="w-full h-full object-contain"
+                    placeholderSize="sm"
+                  />
+                </div>
+                <div>
+                  <p className="font-black text-slate-900">{getDisplayName(selectedCard)}</p>
+                  <p className="text-sm text-slate-500">{selectedCard.set_id} · {selectedCard.year}</p>
+                </div>
+              </div>
+              <h3 className="text-lg font-black text-slate-900 mb-3">
+                Selecciona la variante
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {selectedCard.variants.length > 0 ? (
+                  selectedCard.variants.map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setExploreVariant(v)}
+                      className="px-5 py-3 rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition"
+                    >
+                      {v}
+                    </button>
+                  ))
+                ) : (
+                  <button
+                    onClick={() => setExploreVariant('standard')}
+                    className="px-5 py-3 rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition"
+                  >
+                    standard
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </Layout>
     );
   }
 
-  // --- Mode B: Explore ---
-  const stepLabels = ['Idioma', 'Set', 'Carta'];
+  // --- Mode B: Explore (5 steps) ---
+  const stepLabels = ['Idioma', 'Año', 'Expansión', 'Carta', 'Variante'];
 
   return (
     <Layout>
       <div className="flex items-center gap-3 mb-6">
         <button
-          onClick={() => {
-            if (exploreStep === 1) {
-              resetMode();
-            } else {
-              setExploreStep(exploreStep - 1);
-              if (exploreStep === 2) setExploreLang('');
-              if (exploreStep === 3) setExploreSet('');
-            }
-          }}
+          onClick={goBack}
           className="p-3 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 transition"
         >
           <ArrowLeft size={20} />
@@ -448,7 +539,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
             Explorar catálogo
           </h2>
           <p className="text-slate-600">
-            Paso {exploreStep} de 3 — {stepLabels[exploreStep - 1]}
+            Paso {exploreStep} de {stepLabels.length} — {stepLabels[exploreStep - 1]}
           </p>
         </div>
       </div>
@@ -464,6 +555,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
         ))}
       </div>
 
+      {/* Step 1: Idioma */}
       {exploreStep === 1 && (
         <div className="max-w-3xl">
           <h3 className="text-xl font-black text-slate-900 mb-4">
@@ -486,40 +578,70 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
         </div>
       )}
 
+      {/* Step 2: Año */}
       {exploreStep === 2 && (
-        <div className="max-w-4xl">
+        <div className="max-w-3xl">
           <h3 className="text-xl font-black text-slate-900 mb-1">
-            Selecciona el set
+            Selecciona el año de lanzamiento
           </h3>
           <p className="text-sm text-slate-500 mb-4">
-            {availableSets.length} sets disponibles en{' '}
+            {availableYears.length} años disponibles en{' '}
             {LANG_LABELS[exploreLang] || exploreLang}
           </p>
-          <div className="flex flex-wrap gap-2">
-            {availableSets.map((setId) => (
+          <div className="flex flex-wrap gap-3">
+            {availableYears.map((year) => (
               <button
-                key={setId}
+                key={year}
                 onClick={() => {
-                  setExploreSet(setId);
+                  setExploreYear(year);
                   setExploreStep(3);
                 }}
-                className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition"
+                className="px-6 py-4 rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition shadow-sm"
               >
-                {setId}
+                {year}
               </button>
             ))}
           </div>
         </div>
       )}
 
+      {/* Step 3: Expansión */}
       {exploreStep === 3 && (
+        <div className="max-w-4xl">
+          <h3 className="text-xl font-black text-slate-900 mb-1">
+            Selecciona la expansión
+          </h3>
+          <p className="text-sm text-slate-500 mb-4">
+            {availableSets.length} expansiones de {exploreYear} en{' '}
+            {LANG_LABELS[exploreLang] || exploreLang}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {availableSets.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setExploreSet(s.id);
+                  setExploreStep(4);
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition"
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Carta */}
+      {exploreStep === 4 && (
         <div>
           <h3 className="text-xl font-black text-slate-900 mb-1">
             Selecciona la carta
           </h3>
           <p className="text-sm text-slate-500 mb-4">
-            {setCards.length} cartas en {exploreSet} ·{' '}
-            {LANG_LABELS[exploreLang] || exploreLang}
+            {setCards.length} cartas en{' '}
+            {availableSets.find((s) => s.id === exploreSet)?.name || exploreSet}{' '}
+            · {LANG_LABELS[exploreLang] || exploreLang}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {setCards.map((card) => (
@@ -540,10 +662,60 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                   <p className="font-bold text-sm text-slate-900 truncate">
                     {getDisplayName(card)}
                   </p>
-                  <p className="text-xs text-slate-400">{card.set_id}</p>
+                  <p className="text-xs text-slate-400">#{card.localId}</p>
                 </div>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Step 5: Variante */}
+      {exploreStep === 5 && selectedCard && (
+        <div className="max-w-2xl">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-16 h-20 rounded-xl bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                <CardImage
+                  src={selectedCard.image_url}
+                  alt={getDisplayName(selectedCard)}
+                  className="w-full h-full object-contain"
+                  placeholderSize="sm"
+                />
+              </div>
+              <div>
+                <p className="font-black text-slate-900">{getDisplayName(selectedCard)}</p>
+                <p className="text-sm text-slate-500">
+                  {availableSets.find((s) => s.id === exploreSet)?.name || exploreSet}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {LANG_LABELS[exploreLang] || exploreLang} · {exploreYear}
+                </p>
+              </div>
+            </div>
+            <h3 className="text-xl font-black text-slate-900 mb-4">
+              Selecciona la variante
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              {selectedCard.variants.length > 0 ? (
+                selectedCard.variants.map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setExploreVariant(v)}
+                    className="px-6 py-4 rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition shadow-sm"
+                  >
+                    {v}
+                  </button>
+                ))
+              ) : (
+                <button
+                  onClick={() => setExploreVariant('standard')}
+                  className="px-6 py-4 rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition shadow-sm"
+                >
+                  standard
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

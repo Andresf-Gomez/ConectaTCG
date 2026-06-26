@@ -16,8 +16,10 @@ const CONDITIONS = ['Near Mint', 'Excellent', 'Light Played', 'Played'];
 interface BulkRow {
   key: number;
   lang: string;
+  year: string;
   setId: string;
   cardId: string;
+  variant: string;
   condition: string;
   price: number;
   description: string;
@@ -29,8 +31,10 @@ function emptyRow(key: number): BulkRow {
   return {
     key,
     lang: '',
+    year: '',
     setId: '',
     cardId: '',
+    variant: '',
     condition: 'Near Mint',
     price: 0,
     description: '',
@@ -59,14 +63,31 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
     );
   }, [catalog]);
 
-  const getSetsForLang = useCallback(
+  const getYearsForLang = useCallback(
     (lang: string) => {
       if (!lang) return [];
-      const sets = new Set<string>();
+      const years = new Set<number>();
       for (const c of catalog) {
-        if (c.languages.includes(lang)) sets.add(c.set_id);
+        if (c.languages.includes(lang) && c.year != null) years.add(c.year);
       }
-      return Array.from(sets).sort();
+      return Array.from(years).sort((a, b) => b - a);
+    },
+    [catalog]
+  );
+
+  const getSetsForLangAndYear = useCallback(
+    (lang: string, year: string) => {
+      if (!lang || !year) return [] as { id: string; name: string }[];
+      const yr = Number(year);
+      const seen = new Map<string, string>();
+      for (const c of catalog) {
+        if (c.languages.includes(lang) && c.year === yr && !seen.has(c.set_id)) {
+          seen.set(c.set_id, c.setNames[lang] || c.set_id);
+        }
+      }
+      return Array.from(seen.entries())
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
     },
     [catalog]
   );
@@ -106,17 +127,21 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
   }
 
   function changeLang(key: number, lang: string) {
-    updateRow(key, { lang, setId: '', cardId: '', avgPrice: null });
+    updateRow(key, { lang, year: '', setId: '', cardId: '', variant: '', avgPrice: null });
+  }
+
+  function changeYear(key: number, year: string) {
+    updateRow(key, { year, setId: '', cardId: '', variant: '', avgPrice: null });
   }
 
   function changeSet(key: number, setId: string) {
-    updateRow(key, { setId, cardId: '', avgPrice: null });
+    updateRow(key, { setId, cardId: '', variant: '', avgPrice: null });
   }
 
   async function changeCard(key: number, cardId: string) {
     const card = findCard(cardId);
     if (!card) return;
-    updateRow(key, { cardId, avgLoading: true, avgPrice: null });
+    updateRow(key, { cardId, variant: '', avgLoading: true, avgPrice: null });
     const name = getDisplayName(card);
     const { data } = await supabase
       .from('cards')
@@ -151,7 +176,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
         name: getDisplayName(card),
         set_name: card.set_id,
         number: card.id,
-        rarity: '',
+        rarity: card.rarity,
         type: 'Carta single',
         language: r.lang,
         image: card.image_url,
@@ -160,6 +185,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
         city: '',
         description: r.description,
         seller_name: user?.email ?? 'Vendedor',
+        variant: r.variant,
       };
     });
 
@@ -209,50 +235,36 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">
-                  #
-                </th>
-                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">
-                  Idioma
-                </th>
-                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">
-                  Expansión
-                </th>
-                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap min-w-[180px]">
-                  Carta
-                </th>
-                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">
-                  Condición
-                </th>
-                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">
-                  Precio prom.
-                </th>
-                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">
-                  Precio venta
-                </th>
-                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">
-                  Descripción
-                </th>
-                <th className="px-3 py-3 text-center font-bold text-slate-700">
-                  Img
-                </th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">#</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Idioma</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Año</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Expansión</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap min-w-[180px]">Carta</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Variante</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Condición</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Precio prom.</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Precio venta</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Descripción</th>
+                <th className="px-3 py-3 text-center font-bold text-slate-700">Img</th>
                 <th className="px-3 py-3" />
               </tr>
             </thead>
             <tbody>
               {rows.map((row, idx) => {
-                const sets = getSetsForLang(row.lang);
+                const years = getYearsForLang(row.lang);
+                const sets = getSetsForLangAndYear(row.lang, row.year);
                 const cardsInSet = getCardsForSet(row.lang, row.setId);
                 const card = row.cardId ? findCard(row.cardId) : null;
+                const variants = card?.variants ?? [];
 
                 return (
                   <tr
                     key={row.key}
                     className="border-b border-slate-100 hover:bg-slate-50/50"
                   >
-                    <td className="px-3 py-2 text-slate-400 font-bold">
-                      {idx + 1}
-                    </td>
+                    <td className="px-3 py-2 text-slate-400 font-bold">{idx + 1}</td>
+
+                    {/* Idioma */}
                     <td className="px-3 py-2">
                       <select
                         value={row.lang}
@@ -267,21 +279,42 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                         ))}
                       </select>
                     </td>
+
+                    {/* Año */}
                     <td className="px-3 py-2">
                       <select
-                        value={row.setId}
-                        onChange={(e) => changeSet(row.key, e.target.value)}
+                        value={row.year}
+                        onChange={(e) => changeYear(row.key, e.target.value)}
                         disabled={!row.lang}
-                        className="w-full min-w-[130px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
+                        className="w-full min-w-[80px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
                       >
                         <option value="">—</option>
-                        {sets.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
+                        {years.map((y) => (
+                          <option key={y} value={y}>
+                            {y}
                           </option>
                         ))}
                       </select>
                     </td>
+
+                    {/* Expansión */}
+                    <td className="px-3 py-2">
+                      <select
+                        value={row.setId}
+                        onChange={(e) => changeSet(row.key, e.target.value)}
+                        disabled={!row.year}
+                        className="w-full min-w-[150px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
+                      >
+                        <option value="">—</option>
+                        {sets.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* Carta */}
                     <td className="px-3 py-2">
                       <select
                         value={row.cardId}
@@ -297,6 +330,27 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                         ))}
                       </select>
                     </td>
+
+                    {/* Variante */}
+                    <td className="px-3 py-2">
+                      <select
+                        value={row.variant}
+                        onChange={(e) =>
+                          updateRow(row.key, { variant: e.target.value })
+                        }
+                        disabled={!row.cardId || variants.length === 0}
+                        className="w-full min-w-[110px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
+                      >
+                        <option value="">—</option>
+                        {variants.map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* Condición */}
                     <td className="px-3 py-2">
                       <select
                         value={row.condition}
@@ -310,37 +364,36 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                         ))}
                       </select>
                     </td>
+
+                    {/* Precio prom. */}
                     <td className="px-3 py-2 whitespace-nowrap">
                       {row.avgLoading ? (
-                        <Loader2
-                          size={16}
-                          className="animate-spin text-blue-500"
-                        />
+                        <Loader2 size={16} className="animate-spin text-blue-500" />
                       ) : row.avgPrice !== null ? (
                         <span className="text-slate-700 font-bold">
                           ${row.avgPrice.toLocaleString('es-CO')}
                         </span>
                       ) : row.cardId ? (
-                        <span className="text-slate-400 text-xs">
-                          Sin historial
-                        </span>
+                        <span className="text-slate-400 text-xs">Sin historial</span>
                       ) : (
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
+
+                    {/* Precio venta */}
                     <td className="px-3 py-2">
                       <input
                         type="number"
                         value={row.price || ''}
                         onChange={(e) =>
-                          updateRow(row.key, {
-                            price: Number(e.target.value),
-                          })
+                          updateRow(row.key, { price: Number(e.target.value) })
                         }
                         placeholder="0"
                         className="w-full min-w-[100px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500"
                       />
                     </td>
+
+                    {/* Descripción */}
                     <td className="px-3 py-2">
                       <input
                         type="text"
@@ -352,6 +405,8 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                         className="w-full min-w-[120px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500"
                       />
                     </td>
+
+                    {/* Img */}
                     <td className="px-3 py-2 text-center">
                       {card && card.image_url ? (
                         <button
@@ -369,6 +424,8 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                         <span className="text-slate-300">—</span>
                       )}
                     </td>
+
+                    {/* Eliminar */}
                     <td className="px-3 py-2">
                       <button
                         onClick={() => removeRow(row.key)}
@@ -417,9 +474,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
         className="mt-5 w-full sm:w-auto px-8 py-4 rounded-2xl bg-yellow-400 hover:bg-yellow-300 font-black text-slate-900 flex items-center justify-center gap-2 disabled:opacity-50 transition"
       >
         <Upload size={20} />
-        {publishing
-          ? 'Publicando...'
-          : `Publicar todas (${validRows.length})`}
+        {publishing ? 'Publicando...' : `Publicar todas (${validRows.length})`}
       </button>
 
       {previewCard && (
@@ -451,7 +506,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
               />
             </div>
             <p className="mt-3 text-sm text-slate-500 text-center">
-              {previewCard.set_id} · {previewCard.id}
+              {previewCard.set_id} · #{previewCard.localId}
             </p>
           </div>
         </div>
