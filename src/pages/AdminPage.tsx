@@ -32,10 +32,11 @@ export function AdminPage({ setPage }: { setPage: (page: string) => void }) {
 
   async function fetchRequests() {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('seller_requests')
-      .select('id, user_id, status, reason, created_at, profiles(email)')
+      .select('id, user_id, status, reason, created_at, profiles!seller_requests_user_id_fkey(email)')
       .order('created_at', { ascending: false });
+    if (error) console.error('[AdminPage] seller_requests error:', error);
     setRequests((data ?? []) as SellerRequest[]);
     setLoading(false);
   }

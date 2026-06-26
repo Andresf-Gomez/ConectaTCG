@@ -21,12 +21,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function fetchAndSetRole(userId: string, email: string) {
-    const { data } = await supabase
+    const { data: existing, error: selectError } = await supabase
       .from('profiles')
-      .upsert({ id: userId, email }, { onConflict: 'id', ignoreDuplicates: false })
       .select('role')
+      .eq('id', userId)
       .single();
-    setRole((data?.role ?? 'buyer') as Role);
+
+
+    if (existing) {
+      await supabase.from('profiles').update({ email }).eq('id', userId);
+      setRole((existing.role ?? 'buyer') as Role);
+    } else {
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({ id: userId, email });
+      setRole('buyer');
+    }
   }
 
   useEffect(() => {
