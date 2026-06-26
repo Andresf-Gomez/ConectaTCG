@@ -34,8 +34,16 @@ export function Marketplace({
     'Cartagena',
     'Pereira',
   ];
+  const LANG_MAP: Record<string, string> = {
+    en: 'Inglés', es: 'Español', fr: 'Français', de: 'Deutsch',
+    it: 'Italiano', ja: 'Japonés', pt: 'Português', ko: '한국어',
+    'zh-cn': 'Chino simplificado', 'zh-tw': 'Chino tradicional',
+    th: 'ไทย', id: 'Indonesia',
+  };
+  const normalizeLang = (lang: string) => LANG_MAP[lang] || lang || 'Español';
+
   const expansions = ['Todas', ...Array.from(new Set(allCards.map((c) => c.set)))];
-  const languages = ['Todos', ...Array.from(new Set(allCards.map((c) => c.language || 'Español')))];
+  const languages = ['Todos', ...Array.from(new Set(allCards.map((c) => normalizeLang(c.language))))];
   const allPrices = allCards.flatMap((c) => c.offers.map((o) => o.price));
   const lowestPrice = allPrices.length > 0 ? Math.min(...allPrices) : 0;
   const highestPrice = allPrices.length > 0 ? Math.max(...allPrices) : 1000000;
@@ -63,7 +71,7 @@ export function Marketplace({
       const matchesExpansion =
         expansionFilter === 'Todas' || c.set === expansionFilter;
       const matchesLanguage =
-        languageFilter === 'Todos' || (c.language || 'Español') === languageFilter;
+        languageFilter === 'Todos' || normalizeLang(c.language) === languageFilter;
       const effectiveMinPrice = Math.min(
         minPrice || 0,
         maxPrice || highestPrice
@@ -302,12 +310,12 @@ export function Marketplace({
                           <p className="text-sm text-slate-600 mt-1">{group.description}</p>
                         </div>
                       </div>
-                      <span className={`px-4 py-2 rounded-full text-sm font-black ${group.accent === 'blue' ? 'bg-blue-600 text-white' : 'bg-yellow-400 text-slate-950'}`}>
+                      <span className={`w-fit px-4 py-2 rounded-full text-sm font-black ${group.accent === 'blue' ? 'bg-blue-600 text-white' : 'bg-yellow-400 text-slate-950'}`}>
                         {group.items.length} producto(s)
                       </span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
                     {group.items.map((card) => (
                       <CardTile
                         key={card.id}

@@ -15,7 +15,7 @@ export function SearchBar({ query, setQuery, onSearch }: { query: string; setQue
       </div>
       <button
         onClick={onSearch}
-        className="px-6 py-3 rounded-2xl bg-yellow-400 text-slate-900 font-bold hover:bg-yellow-300 transition"
+        className="px-6 py-3 rounded-2xl bg-yellow-400 text-slate-900 font-black hover:bg-yellow-300 transition"
       >
         Buscar carta
       </button>

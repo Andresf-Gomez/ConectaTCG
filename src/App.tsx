@@ -135,8 +135,8 @@ function AppContent() {
             <button
               key={item.key}
               onClick={() => navigate(item.key)}
-              className={`py-2 rounded-2xl text-xs font-bold flex flex-col items-center gap-1 ${
-                page === item.key ? 'bg-blue-600 text-white' : 'text-slate-500'
+              className={`py-2 px-3 rounded-2xl text-xs font-bold flex flex-col items-center gap-1 transition ${
+                page === item.key ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               <Icon size={18} />

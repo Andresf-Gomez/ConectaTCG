@@ -6,8 +6,8 @@ import {
   WalletCards,
   MessageCircle,
   Bell,
-  User,
   LogOut,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -71,23 +71,18 @@ export function Header({ page, setPage, notifications }: { page: string; setPage
             )}
           </button>
           {user ? (
-            <>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-black text-sm flex-shrink-0">
+                {user.email?.[0]?.toUpperCase() ?? 'U'}
+              </div>
               <button
                 onClick={() => signOut()}
-                className="sm:hidden p-3 rounded-2xl bg-slate-200 text-slate-700 hover:bg-slate-300 transition"
+                className="p-2.5 rounded-2xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+                title="Cerrar sesión"
               >
-                <User size={20} />
+                <LogOut size={18} />
               </button>
-              <div className="hidden sm:flex items-center gap-2">
-                <span className="text-sm text-slate-600 max-w-[160px] truncate">{user.email}</span>
-                <button
-                  onClick={() => signOut()}
-                  className="px-4 py-3 rounded-2xl bg-slate-200 text-slate-700 font-semibold hover:bg-slate-300 transition flex items-center gap-2"
-                >
-                  <LogOut size={18} /> Cerrar sesión
-                </button>
-              </div>
-            </>
+            </div>
           ) : (
             <button
               onClick={() => setPage('login')}

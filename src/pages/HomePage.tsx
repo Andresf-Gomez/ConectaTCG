@@ -16,7 +16,7 @@ export function HomePage({ setPage, setSelectedCard, searchQuery, setSearchQuery
     <Layout>
       <section className="grid lg:grid-cols-2 gap-8 items-center min-h-[70vh]">
         <div>
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 text-slate-800 text-sm font-semibold mb-5">
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-300 text-slate-900 text-sm font-black mb-5 shadow-sm">
             <ShieldCheck size={17} /> Compra protegida para cartas TCG
           </span>
           <h2 className="text-3xl md:text-6xl font-black text-slate-950 leading-tight">
@@ -41,12 +41,6 @@ export function HomePage({ setPage, setSelectedCard, searchQuery, setSearchQuery
               text="Calificaciones y reseñas."
             />
             <InfoPill icon={Truck} title="Envíos" text="Opciones nacionales." />
-          </div>
-          <div className="mt-5 bg-white border border-blue-100 rounded-3xl p-5 shadow-sm">
-            <p className="text-sm font-black text-blue-700 uppercase">Contáctanos</p>
-            <p className="text-slate-700 mt-1">
-              Andrés Gómez · Teléfono 3108633831
-            </p>
           </div>
         </div>
         <div className="relative">
