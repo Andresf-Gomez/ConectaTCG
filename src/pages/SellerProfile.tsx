@@ -15,20 +15,20 @@ export function SellerProfile({ seller, setPage }: {
     <Layout>
       <button
         onClick={() => setPage('detail')}
-        className="mb-5 flex items-center gap-2 text-slate-600 hover:text-blue-700"
+        className="mb-5 flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-blue-700 dark:hover:text-blue-400"
       >
         <ArrowLeft size={18} /> Volver a la publicación
       </button>
       <div className="grid lg:grid-cols-[360px_1fr] gap-6">
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm h-fit">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm h-fit">
           <div className="w-24 h-24 rounded-3xl bg-blue-600 text-yellow-300 font-black flex items-center justify-center text-3xl mb-4">
             TCG
           </div>
-          <h2 className="text-3xl font-black text-slate-950 flex items-center gap-2">
+          <h2 className="text-3xl font-black text-slate-950 dark:text-white flex items-center gap-2">
             {seller.seller}{' '}
             {seller.verified && <BadgeCheck className="text-blue-600" />}
           </h2>
-          <p className="text-slate-500">Vendedor en {seller.city}</p>
+          <p className="text-slate-500 dark:text-slate-400">Vendedor en {seller.city}</p>
           <div className="grid grid-cols-2 gap-3 mt-5">
             <Metric label="Calificación" value={`${seller.rating}/5`} />
             <Metric label="Ventas" value={seller.sales} />
@@ -42,13 +42,13 @@ export function SellerProfile({ seller, setPage }: {
             <MessageCircle size={18} /> Contactar vendedor
           </button>
         </div>
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
-          <h3 className="text-2xl font-black text-slate-950 mb-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+          <h3 className="text-2xl font-black text-slate-950 dark:text-white mb-4">
             Reseñas recientes
           </h3>
           <div className="space-y-3">
             {reviews.map((r, i) => (
-              <div key={i} className="bg-slate-50 rounded-2xl p-4">
+              <div key={i} className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4">
                 <p className="flex items-center gap-1 mb-2">
                   <Star size={16} className="fill-yellow-400 text-yellow-400" />
                   <Star size={16} className="fill-yellow-400 text-yellow-400" />
@@ -56,11 +56,11 @@ export function SellerProfile({ seller, setPage }: {
                   <Star size={16} className="fill-yellow-400 text-yellow-400" />
                   <Star size={16} className="fill-yellow-400 text-yellow-400" />
                 </p>
-                <p className="text-slate-700">"{r}"</p>
+                <p className="text-slate-700 dark:text-slate-300">"{r}"</p>
               </div>
             ))}
           </div>
-          <h3 className="text-2xl font-black text-slate-950 mt-8 mb-4">
+          <h3 className="text-2xl font-black text-slate-950 dark:text-white mt-8 mb-4">
             Indicadores de confianza
           </h3>
           <div className="grid sm:grid-cols-3 gap-3">

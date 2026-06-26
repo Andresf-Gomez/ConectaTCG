@@ -665,9 +665,9 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                 </div>
                 <div className="p-3">
                   <p className="font-bold text-sm text-slate-900 truncate">
+                    <span className="text-slate-400 font-normal">#{card.localId}</span>{' '}
                     {getDisplayName(card)}
                   </p>
-                  <p className="text-xs text-slate-400">#{card.localId}</p>
                 </div>
               </button>
             ))}

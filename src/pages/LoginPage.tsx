@@ -43,14 +43,14 @@ export function LoginPage({ setPage, redirectTo }: LoginPageProps) {
 
   return (
     <Layout>
-      <div className="max-w-md mx-auto bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">
-        <h2 className="text-3xl font-black text-slate-950">Ingresar</h2>
-        <p className="text-slate-600 mt-2">
+      <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-700 p-8 shadow-sm">
+        <h2 className="text-3xl font-black text-slate-950 dark:text-white">Ingresar</h2>
+        <p className="text-slate-600 dark:text-slate-300 mt-2">
           Accede para comprar, vender y consultar tu historial.
         </p>
         <div className="grid gap-3 mt-6">
           <input
-            className="border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
+            className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-2xl p-4 outline-none focus:border-blue-500"
             placeholder="Correo electrónico"
             type="email"
             value={email}
@@ -58,7 +58,7 @@ export function LoginPage({ setPage, redirectTo }: LoginPageProps) {
             disabled={loading}
           />
           <input
-            className="border border-slate-200 rounded-2xl p-4 outline-none focus:border-blue-500"
+            className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-2xl p-4 outline-none focus:border-blue-500"
             placeholder="Contraseña"
             type="password"
             value={password}
@@ -67,10 +67,10 @@ export function LoginPage({ setPage, redirectTo }: LoginPageProps) {
           />
         </div>
         {error && (
-          <p className="mt-3 text-sm text-red-600 bg-red-50 rounded-xl p-3">{error}</p>
+          <p className="mt-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/40 rounded-xl p-3">{error}</p>
         )}
         {success && (
-          <p className="mt-3 text-sm text-green-600 bg-green-50 rounded-xl p-3">{success}</p>
+          <p className="mt-3 text-sm text-green-600 bg-green-50 dark:bg-green-950/40 rounded-xl p-3">{success}</p>
         )}
         <button
           onClick={handleSignIn}

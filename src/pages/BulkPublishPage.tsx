@@ -348,7 +348,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                         <option value="">—</option>
                         {cardsInSet.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {getDisplayName(c)}
+                            #{c.localId} · {getDisplayName(c)}
                           </option>
                         ))}
                       </select>

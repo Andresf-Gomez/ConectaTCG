@@ -2,8 +2,11 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
+type Role = 'buyer' | 'seller' | 'admin';
+
 interface AuthContextType {
   user: User | null;
+  role: Role;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -14,16 +17,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<Role>('buyer');
   const [loading, setLoading] = useState(true);
+
+  async function fetchAndSetRole(userId: string, email: string) {
+    const { data } = await supabase
+      .from('profiles')
+      .upsert({ id: userId, email }, { onConflict: 'id', ignoreDuplicates: false })
+      .select('role')
+      .single();
+    setRole((data?.role ?? 'buyer') as Role);
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (session?.user) {
+        fetchAndSetRole(session.user.id, session.user.email ?? '').finally(() =>
+          setLoading(false)
+        );
+      } else {
+        setLoading(false);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchAndSetRole(session.user.id, session.user.email ?? '');
+      } else {
+        setRole('buyer');
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -44,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, role, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
