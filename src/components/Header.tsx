@@ -11,6 +11,7 @@ import {
   Sun,
   Moon,
   ShieldCheck,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -23,12 +24,17 @@ export function Header({ page, setPage, notifications }: { page: string; setPage
     { key: 'home', label: 'Inicio', icon: Home },
     { key: 'market', label: 'Marketplace', icon: Store },
     { key: 'publish', label: 'Publicar', icon: Upload, auth: true },
+    { key: 'sellerDashboard', label: 'Mi tienda', icon: LayoutDashboard, auth: true, sellerOnly: true },
     { key: 'history', label: 'Historial', icon: History, auth: true },
     { key: 'commissions', label: 'Comisiones', icon: WalletCards, auth: true },
     { key: 'contact', label: 'Contacto', icon: MessageCircle },
     { key: 'admin', label: 'Admin', icon: ShieldCheck, adminOnly: true },
   ];
-  const nav = allNav.filter((item) => (!item.auth || user) && (!item.adminOnly || role === 'admin'));
+  const nav = allNav.filter((item) =>
+    (!item.auth || user) &&
+    (!item.adminOnly || role === 'admin') &&
+    (!item.sellerOnly || role === 'seller' || role === 'admin')
+  );
   return (
     <div className="sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
