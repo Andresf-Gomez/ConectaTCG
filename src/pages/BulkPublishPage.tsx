@@ -197,7 +197,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
       return {
         seller_id: user?.id,
         name: getDisplayName(card),
-        set_name: card.set_id,
+        set_name: card.setNames[r.lang] || card.set_id,
         number: card.id,
         rarity: card.rarity,
         type: 'Carta single',
@@ -209,6 +209,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
         description: r.description,
         seller_name: user?.email ?? 'Vendedor',
         variant: r.variant,
+        year: card.year,
       };
     });
 
