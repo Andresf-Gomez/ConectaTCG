@@ -34,7 +34,7 @@ export function AdminPage({ setPage }: { setPage: (page: string) => void }) {
     setLoading(true);
     const { data } = await supabase
       .from('seller_requests')
-      .select('id, user_id, status, reason, created_at, profiles(email)')
+      .select('id, user_id, status, reason, created_at, profiles!seller_requests_user_id_fkey(email)')
       .order('created_at', { ascending: false });
     setRequests((data ?? []) as SellerRequest[]);
     setLoading(false);
