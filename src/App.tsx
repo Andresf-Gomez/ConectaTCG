@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Home, Store, Upload, History, WalletCards, MessageCircle } from 'lucide-react';
+import { Home, Store, Upload, History, WalletCards, MessageCircle, LayoutDashboard } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Header } from './components/Header';
@@ -23,13 +23,14 @@ import { ContactPage } from './pages/ContactPage';
 import { LoginPage } from './pages/LoginPage';
 import { RequestSellerPage } from './pages/RequestSellerPage';
 import { AdminPage } from './pages/AdminPage';
+import { SellerDashboardPage } from './pages/SellerDashboardPage';
 import { cards, initialTransactions, type Card } from './data/cards';
 import type { GroupedCard } from './hooks/useCards';
 
 const protectedPages = new Set([
   'checkout', 'publish', 'history', 'transactionDetail',
   'payout', 'sellerSale', 'shipmentSuccess', 'publishSuccess', 'orderSuccess',
-  'commissions', 'bulkPublish',
+  'commissions', 'bulkPublish', 'sellerDashboard',
 ]);
 
 function AppContent() {
@@ -55,6 +56,8 @@ function AppContent() {
       setPage('requestSeller');
     } else if (target === 'admin' && role !== 'admin') {
       setPage('home');
+    } else if (target === 'sellerDashboard' && role === 'buyer') {
+      setPage('requestSeller');
     } else {
       setRedirectAfterLogin(null);
       setPage(target);
@@ -128,6 +131,9 @@ function AppContent() {
           {page === 'login' && <LoginPage setPage={navigate} redirectTo={redirectAfterLogin} />}
           {page === 'requestSeller' && <RequestSellerPage setPage={navigate} />}
           {page === 'admin' && role === 'admin' && <AdminPage setPage={navigate} />}
+          {page === 'sellerDashboard' && (role === 'seller' || role === 'admin') && (
+            <SellerDashboardPage setPage={navigate} />
+          )}
         </div>
       </AnimatePresence>
       <div className="md:hidden fixed bottom-3 left-3 right-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-xl p-2 flex justify-around z-50">
@@ -135,10 +141,11 @@ function AppContent() {
           { key: 'home', icon: Home, label: 'Inicio', auth: false },
           { key: 'market', icon: Store, label: 'Buscar', auth: false },
           { key: 'publish', icon: Upload, label: 'Vender', auth: true },
+          { key: 'sellerDashboard', icon: LayoutDashboard, label: 'Mi tienda', auth: true, sellerOnly: true },
           { key: 'history', icon: History, label: 'Historial', auth: true },
           { key: 'commissions', icon: WalletCards, label: 'Comisión', auth: true },
           { key: 'contact', icon: MessageCircle, label: 'Contacto', auth: false },
-        ].filter((item) => !item.auth || user).map((item) => {
+        ].filter((item) => (!item.auth || user) && (!item.sellerOnly || role === 'seller' || role === 'admin')).map((item) => {
           const Icon = item.icon;
           return (
             <button
