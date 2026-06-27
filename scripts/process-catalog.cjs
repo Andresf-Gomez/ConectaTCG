@@ -10,14 +10,44 @@ const entries = Object.values(raw.cards);
 
 console.log(`Procesando ${entries.length} cartas...`);
 
-// Canonical variant keys from the boolean variants object (en, camelCase).
-// Used to normalize type strings from variants_detailed across languages.
-const KNOWN_VARIANTS = ['holo', 'normal', 'reverse', 'firstEdition', 'wPromo'];
-const VARIANT_LOWER_MAP = Object.fromEntries(KNOWN_VARIANTS.map((v) => [v.toLowerCase(), v]));
+// Maps localized variant names (any language) to canonical English keys.
+const VARIANT_MAP = {
+  // English
+  'holo': 'holo',
+  'normal': 'normal',
+  'reverse': 'reverse',
+  'firstEdition': 'firstEdition',
+  'wPromo': 'wPromo',
+  'metal': 'metal',
+  'Metal': 'metal',
+  'lenticular': 'lenticular',
+  // French
+  'Holo': 'holo',
+  'Normale': 'normal',
+  'Reverse': 'reverse',
+  'Métal': 'metal',
+  'métal': 'metal',
+  // German
+  'Reverse Holo': 'reverse',
+  'Metall': 'metal',
+  'metall': 'metal',
+  // Italian
+  'Olografica': 'holo',
+  'Metallo': 'metal',
+  'metallo': 'metal',
+  // Spanish
+  'Holográfica': 'holo',
+  'Reversa': 'reverse',
+  'reversa': 'reverse',
+  'Normal': 'normal',
+  'Básico': 'normal',
+  'básico': 'normal',
+};
 
 function normalizeVariantType(type) {
-  const lower = type.toLowerCase().replace(/\s+/g, '');
-  return VARIANT_LOWER_MAP[lower] || lower;
+  if (type in VARIANT_MAP) return VARIANT_MAP[type];
+  // Fallback: lowercase
+  return type.toLowerCase();
 }
 
 const catalog = entries.map((card) => {
