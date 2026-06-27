@@ -38,7 +38,7 @@ interface SupabaseTx {
 interface DashCard extends SupabaseCard {
   active?: boolean;
   variant?: string;
-  year?: number;
+  year: number | null;
 }
 
 type DashTab = 'resumen' | 'pedidos' | 'inventario' | 'historial';
