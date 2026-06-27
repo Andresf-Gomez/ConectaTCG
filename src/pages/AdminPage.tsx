@@ -12,7 +12,7 @@ interface SellerRequest {
   status: TabStatus;
   reason: string | null;
   created_at: string;
-  profiles: { email: string | null } | null;
+  profiles: { email: string | null }[] | null;
 }
 
 export function AdminPage({ setPage }: { setPage: (page: string) => void }) {
@@ -128,7 +128,7 @@ export function AdminPage({ setPage }: { setPage: (page: string) => void }) {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-800 dark:text-white text-sm truncate">
-                      {req.profiles?.email ?? req.user_id}
+                      {req.profiles?.[0]?.email ?? req.user_id}
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5">
                       {new Date(req.created_at).toLocaleDateString('es-CO', {
