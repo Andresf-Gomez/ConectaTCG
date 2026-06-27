@@ -3,7 +3,7 @@ import { SlidersHorizontal, X, Loader2 } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { SearchBar } from '../components/SearchBar';
 import { CardTile } from '../components/CardTile';
-import { cards as catalogCards, type Card } from '../data/cards';
+import { type Card } from '../data/cards';
 import { money } from '../utils/money';
 import { useCards, type GroupedCard } from '../hooks/useCards';
 
@@ -19,7 +19,7 @@ export function Marketplace({
   setSearchQuery: (q: string) => void;
 }) {
   const { cards: supabaseCards, loading: cardsLoading } = useCards();
-  const allCards: (Card | GroupedCard)[] = [...catalogCards, ...supabaseCards];
+  const allCards: (Card | GroupedCard)[] = supabaseCards;
 
   const query = searchQuery;
   const setQuery = setSearchQuery;
