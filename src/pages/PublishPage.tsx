@@ -167,7 +167,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
     const { error } = await supabase.from('cards').insert({
       seller_id: user?.id,
       name: getDisplayName(selectedCard),
-      set_name: selectedCard.set_id,
+      set_name: selectedCard.setNames[exploreLang] || selectedCard.set_id,
       number: selectedCard.id,
       rarity: selectedCard.rarity,
       type: 'Carta single',
@@ -179,6 +179,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
       description,
       seller_name: user?.email ?? 'Vendedor',
       variant: exploreVariant,
+      year: selectedCard.year,
     });
     setPublishing(false);
     if (error) {

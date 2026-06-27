@@ -18,6 +18,7 @@ export interface SupabaseCard {
   city: string;
   description: string;
   seller_name: string;
+  year: number | null;
 }
 
 export interface GroupedCard {
