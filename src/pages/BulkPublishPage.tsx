@@ -119,12 +119,13 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
   }
 
   async function changeYear(key: number, year: string) {
+    const lang = rows.find((r) => r.key === key)?.lang ?? '';
     updateRow(key, {
       year, setId: '', cardId: '', variant: '', avgPrice: null,
       availableSets: [], availableCards: [], optionsLoading: true,
     });
     try {
-      const sets = await fetchSets(Number(year));
+      const sets = await fetchSets(Number(year), lang);
       updateRow(key, { availableSets: sets, optionsLoading: false });
     } catch {
       updateRow(key, { optionsLoading: false });

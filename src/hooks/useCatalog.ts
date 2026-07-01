@@ -80,7 +80,7 @@ function mapRow(row: SupabaseCatalogRow): CatalogCard {
 // ─── Module-level caches ──────────────────────────────────────────────────────
 
 const yearsCache = new Map<string, number[]>();
-const setsCache = new Map<number, SetOption[]>();
+const setsCache = new Map<string, SetOption[]>();
 const cardsCache = new Map<string, CatalogCard[]>();
 const setCodeToDbId = new Map<string, number>();
 
@@ -115,14 +115,13 @@ export async function fetchYears(lang: string): Promise<number[]> {
   return years;
 }
 
-export async function fetchSets(year: number): Promise<SetOption[]> {
-  if (setsCache.has(year)) return setsCache.get(year)!;
-  const { data, error } = await supabase
-    .from('sets')
-    .select('id, set_code, names')
-    .eq('game_id', POKEMON_GAME_ID)
-    .eq('year', year)
-    .order('set_code');
+export async function fetchSets(year: number, lang: string): Promise<SetOption[]> {
+  const cacheKey = `${year}:${lang}`;
+  if (setsCache.has(cacheKey)) return setsCache.get(cacheKey)!;
+  const { data, error } = await supabase.rpc('get_sets_for_language_and_year', {
+    lang,
+    yr: year,
+  });
   if (error) throw error;
   const sets: SetOption[] = (
     data as { id: number; set_code: string; names: Record<string, string> }[]
@@ -137,7 +136,7 @@ export async function fetchSets(year: number): Promise<SetOption[]> {
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
-  setsCache.set(year, sets);
+  setsCache.set(cacheKey, sets);
   return sets;
 }
 
@@ -215,8 +214,10 @@ export function useCatalogCascade() {
   const [sets, setSets] = useState<SetOption[]>([]);
   const [cards, setCards] = useState<CatalogCard[]>([]);
   const [loading, setLoading] = useState(false);
+  const langRef = useRef('');
 
   const getYears = useCallback(async (lang: string) => {
+    langRef.current = lang;
     setLoading(true);
     setYears([]);
     setSets([]);
@@ -233,7 +234,7 @@ export function useCatalogCascade() {
     setSets([]);
     setCards([]);
     try {
-      setSets(await fetchSets(year));
+      setSets(await fetchSets(year, langRef.current));
     } finally {
       setLoading(false);
     }
