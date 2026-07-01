@@ -115,7 +115,7 @@ export function useListings() {
       setError(err.message);
       setCards([]);
     } else {
-      setCards(groupListings((data as ListingRow[]) ?? []));
+      setCards(groupListings((data as unknown as ListingRow[]) ?? []));
     }
     setLoading(false);
   }, []);

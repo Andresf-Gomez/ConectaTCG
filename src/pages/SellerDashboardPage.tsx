@@ -645,7 +645,7 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
         supabase.from('transactions').select('*').eq('seller_id', uid).gte('created_at', startOfMonth.toISOString()),
         supabase.from('transactions').select('*').eq('buyer_id', uid).gte('created_at', startOfMonth.toISOString()),
       ]);
-      setInventory(((invRes.data as ListingJoinRow[]) ?? []).map(mapListing));
+      setInventory(((invRes.data as unknown as ListingJoinRow[]) ?? []).map(mapListing));
       setSalesTx((salesRes.data as SupabaseTx[]) ?? []);
       setBuysTx((buysRes.data as SupabaseTx[]) ?? []);
       setLoading(false);

@@ -43,8 +43,6 @@ export const LANG_LABELS: Record<string, string> = {
   pl: 'Polaco',
 };
 
-const POKEMON_GAME_ID = 6;
-
 const CARD_SELECT = `
   id, tcgdex_id, names, number, image_url, languages,
   set_id, sets ( set_code, names, year ),
@@ -169,7 +167,7 @@ export async function fetchCards(setCode: string, lang: string): Promise<Catalog
     .order('number');
   if (error) throw error;
 
-  const cards = (data ?? []).map((row) => mapRow(row as SupabaseCatalogRow));
+  const cards = (data as unknown as SupabaseCatalogRow[] ?? []).map(mapRow);
   cardsCache.set(cacheKey, cards);
   return cards;
 }
@@ -183,7 +181,7 @@ export async function searchCards(query: string): Promise<CatalogCard[]> {
     .or(`names->>en.ilike.%${q}%,names->>es.ilike.%${q}%`)
     .limit(20);
   if (error) throw error;
-  return (data ?? []).map((row) => mapRow(row as SupabaseCatalogRow));
+  return (data as unknown as SupabaseCatalogRow[] ?? []).map(mapRow);
 }
 
 // ─── useCatalogSearch — for PublishPage search mode ───────────────────────────

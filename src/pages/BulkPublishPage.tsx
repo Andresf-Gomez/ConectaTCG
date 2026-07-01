@@ -158,7 +158,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
       .from('listings')
       .select('price')
       .eq('catalog_card_id', card.dbId)
-      .eq('language', row.lang);
+      .eq('language', row?.lang ?? '');
     if (data && data.length > 0) {
       const avg = Math.round(
         data.reduce((sum: number, r: { price: number }) => sum + r.price, 0) / data.length,
