@@ -5,7 +5,8 @@ import { SearchBar } from '../components/SearchBar';
 import { CardTile } from '../components/CardTile';
 import { type Card } from '../data/cards';
 import { money } from '../utils/money';
-import { useCards, type GroupedCard } from '../hooks/useCards';
+import { type GroupedCard } from '../hooks/useCards';
+import { useListings } from '../hooks/useListings';
 import { LANG_LABELS } from '../hooks/useCatalog';
 
 export function Marketplace({
@@ -19,8 +20,8 @@ export function Marketplace({
   searchQuery: string;
   setSearchQuery: (q: string) => void;
 }) {
-  const { cards: supabaseCards, loading: cardsLoading } = useCards();
-  const allCards: (Card | GroupedCard)[] = supabaseCards;
+  const { cards: supabaseCards, loading: cardsLoading } = useListings();
+  const allCards: GroupedCard[] = supabaseCards;
 
   const query = searchQuery;
   const setQuery = setSearchQuery;

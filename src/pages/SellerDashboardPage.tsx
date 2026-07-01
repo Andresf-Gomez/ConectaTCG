@@ -11,8 +11,7 @@ import { Metric } from '../components/Metric';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { money } from '../utils/money';
-import type { SupabaseCard } from '../hooks/useCards';
-import { LANG_LABELS } from '../hooks/useCatalog';
+import { LANG_LABELS, bestName } from '../hooks/useCatalog';
 
 const YEAR_NONE = '__none__';
 
@@ -28,10 +27,59 @@ interface SupabaseTx {
   seller_name?: string;
 }
 
-interface DashCard extends SupabaseCard {
-  active?: boolean;
-  variant?: string;
+interface DashListing {
+  id: string;
+  catalog_card_id: number;
+  name: string;
+  set_name: string;
+  number: string;
+  language: string;
+  condition: string;
+  price: number;
+  quantity: number;
+  variant: string | null;
+  status: 'active' | 'paused';
+  image: string;
   year: number | null;
+  created_at: string;
+}
+
+interface ListingJoinRow {
+  id: string;
+  price: number;
+  condition: string;
+  quantity: number;
+  language: string;
+  variant: string | null;
+  status: string;
+  created_at: string;
+  catalog_card_id: number;
+  catalog_cards: {
+    names: Record<string, string>;
+    number: string;
+    image_url: string | null;
+    sets: { set_code: string; names: Record<string, string>; year: number | null } | null;
+  } | null;
+}
+
+function mapListing(row: ListingJoinRow): DashListing {
+  const cc = row.catalog_cards;
+  return {
+    id: row.id,
+    catalog_card_id: row.catalog_card_id,
+    name: bestName(cc?.names ?? {}, row.language, String(row.catalog_card_id)),
+    set_name: bestName(cc?.sets?.names ?? {}, row.language, cc?.sets?.set_code ?? ''),
+    number: cc?.number ?? '',
+    language: row.language,
+    condition: row.condition,
+    price: row.price,
+    quantity: row.quantity,
+    variant: row.variant,
+    status: (row.status === 'paused' ? 'paused' : 'active'),
+    image: cc?.image_url ?? '',
+    year: cc?.sets?.year ?? null,
+    created_at: row.created_at,
+  };
 }
 
 type DashTab = 'resumen' | 'pedidos' | 'inventario' | 'historial';
@@ -138,8 +186,8 @@ function InventorySection({
   setInventory,
   setPage,
 }: {
-  inventory: DashCard[];
-  setInventory: React.Dispatch<React.SetStateAction<DashCard[]>>;
+  inventory: DashListing[];
+  setInventory: React.Dispatch<React.SetStateAction<DashListing[]>>;
   setPage: (p: string) => void;
 }) {
   // Cascade filter state
@@ -207,38 +255,38 @@ function InventorySection({
     }
     if (invSearch && !c.name.toLowerCase().includes(invSearch.toLowerCase())) return false;
     if (invCondition && c.condition !== invCondition) return false;
-    if (invStatus === 'active' && c.active === false) return false;
-    if (invStatus === 'paused' && c.active !== false) return false;
+    if (invStatus === 'active' && c.status !== 'active') return false;
+    if (invStatus === 'paused' && c.status === 'active') return false;
     return true;
   }), [inventory, invLang, invSet, invYear, invSearch, invCondition, invStatus]);
 
-  async function savePrice(card: DashCard) {
+  async function savePrice(card: DashListing) {
     const p = parseFloat(editPrice);
     if (isNaN(p) || p <= 0) return;
     setActionLoading(card.id);
-    await supabase.from('cards').update({ price: p }).eq('id', card.id);
+    await supabase.from('listings').update({ price: p }).eq('id', card.id);
     setInventory(prev => prev.map(c => c.id === card.id ? { ...c, price: p } : c));
     setEditingId(null);
     setActionLoading(null);
   }
 
-  async function toggleActive(card: DashCard) {
-    const newActive = card.active === false ? true : false;
+  async function toggleActive(card: DashListing) {
+    const newStatus = card.status === 'active' ? 'paused' : 'active';
     setActionLoading(card.id);
-    await supabase.from('cards').update({ active: newActive }).eq('id', card.id);
-    setInventory(prev => prev.map(c => c.id === card.id ? { ...c, active: newActive } : c));
+    await supabase.from('listings').update({ status: newStatus }).eq('id', card.id);
+    setInventory(prev => prev.map(c => c.id === card.id ? { ...c, status: newStatus } : c));
     setActionLoading(null);
   }
 
   async function deleteCard(id: string) {
     setActionLoading(id);
-    await supabase.from('cards').delete().eq('id', id);
+    await supabase.from('listings').delete().eq('id', id);
     setInventory(prev => prev.filter(c => c.id !== id));
     setDeletingId(null);
     setActionLoading(null);
   }
 
-  const activeCount = inventory.filter(c => c.active !== false).length;
+  const activeCount = inventory.filter(c => c.status === 'active').length;
 
   return (
     <div className="space-y-4">
@@ -372,8 +420,8 @@ function InventorySection({
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {filtered.length > 0 ? filtered.map(card => {
-                    const isActive = card.active !== false;
-                    const imgSrc = card.image_url || card.image;
+                    const isActive = card.status === 'active';
+                    const imgSrc = card.image;
                     return (
                       <tr
                         key={card.id}
@@ -569,7 +617,7 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
   const [orderTab, setOrderTab] = useState<OrderTab>('pending');
   const [dateFilter, setDateFilter] = useState<DateFilter>('month');
 
-  const [inventory, setInventory] = useState<DashCard[]>([]);
+  const [inventory, setInventory] = useState<DashListing[]>([]);
   const [salesTx, setSalesTx] = useState<SupabaseTx[]>([]);
   const [buysTx, setBuysTx] = useState<SupabaseTx[]>([]);
   const [allSalesTx, setAllSalesTx] = useState<SupabaseTx[]>([]);
@@ -589,11 +637,15 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
     async function fetchAll() {
       setLoading(true);
       const [invRes, salesRes, buysRes] = await Promise.all([
-        supabase.from('cards').select('*').eq('seller_id', uid),
+        supabase.from('listings')
+          .select(`id, price, condition, quantity, language, variant, status, created_at, catalog_card_id,
+            catalog_cards ( names, number, image_url, sets ( set_code, names, year ) )`)
+          .eq('seller_id', uid)
+          .order('created_at', { ascending: false }),
         supabase.from('transactions').select('*').eq('seller_id', uid).gte('created_at', startOfMonth.toISOString()),
         supabase.from('transactions').select('*').eq('buyer_id', uid).gte('created_at', startOfMonth.toISOString()),
       ]);
-      setInventory((invRes.data as DashCard[]) ?? []);
+      setInventory(((invRes.data as ListingJoinRow[]) ?? []).map(mapListing));
       setSalesTx((salesRes.data as SupabaseTx[]) ?? []);
       setBuysTx((buysRes.data as SupabaseTx[]) ?? []);
       setLoading(false);
@@ -618,7 +670,7 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
   // Metrics (computed from active cards only)
   const ventasMes = salesTx.reduce((s, t) => s + t.price, 0);
   const comprasMes = buysTx.reduce((s, t) => s + t.price, 0);
-  const activeInventory = inventory.filter(c => c.active !== false);
+  const activeInventory = inventory.filter(c => c.status === 'active');
   const pedidosPorEnviar = salesTx.filter(t => t.status === 'pending').length;
 
   // Orders filtered by tab
