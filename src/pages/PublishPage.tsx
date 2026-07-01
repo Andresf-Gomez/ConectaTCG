@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Search, LayoutGrid, ArrowLeft, Upload, Loader2, Layers } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { CardImage } from '../components/ImagePlaceholder';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import {
-  useCatalog,
+  useCatalogSearch,
+  useCatalogCascade,
   LANG_LABELS,
   getDisplayName,
   type CatalogCard,
@@ -27,7 +28,8 @@ const CITIES = [
 
 export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
   const { user } = useAuth();
-  const { catalog, loading: catalogLoading } = useCatalog();
+  const catalogSearch = useCatalogSearch();
+  const cascade = useCatalogCascade();
 
   const [mode, setMode] = useState<'search' | 'explore' | null>(null);
   const [selectedCard, setSelectedCard] = useState<CatalogCard | null>(null);
@@ -50,73 +52,40 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
 
-  // --- Search mode logic ---
-  const suggestions = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q || q.length < 2) return [];
-    const results: CatalogCard[] = [];
-    for (const card of catalog) {
-      for (const name of Object.values(card.names)) {
-        if (name.toLowerCase().includes(q)) {
-          results.push(card);
-          break;
-        }
-      }
-      if (results.length >= 8) break;
-    }
-    return results;
-  }, [searchTerm, catalog]);
+  // Aliases to keep JSX readable
+  const suggestions = catalogSearch.results;
+  const availableLanguages = cascade.languages.sort((a, b) =>
+    (LANG_LABELS[a] || a).localeCompare(LANG_LABELS[b] || b),
+  );
+  const availableYears = cascade.years;
+  const availableSets = cascade.sets;
+  const setCards = cascade.cards;
 
-  // --- Explore mode computed values ---
-  const availableLanguages = useMemo(() => {
-    const langs = new Set<string>();
-    for (const card of catalog) {
-      for (const l of card.languages) langs.add(l);
-    }
-    return Array.from(langs).sort((a, b) =>
-      (LANG_LABELS[a] || a).localeCompare(LANG_LABELS[b] || b)
-    );
-  }, [catalog]);
+  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setSearchTerm(e.target.value);
+    catalogSearch.search(e.target.value);
+  }
 
-  const availableYears = useMemo(() => {
-    if (!exploreLang) return [];
-    const years = new Set<number>();
-    for (const card of catalog) {
-      if (card.languages.includes(exploreLang) && card.year != null) {
-        years.add(card.year);
-      }
-    }
-    return Array.from(years).sort((a, b) => b - a);
-  }, [exploreLang, catalog]);
+  function selectLang(lang: string) {
+    setExploreLang(lang);
+    setExploreYear(null);
+    setExploreSet('');
+    cascade.getYears(lang);
+    setExploreStep(2);
+  }
 
-  const availableSets = useMemo(() => {
-    if (!exploreLang || exploreYear == null) return [] as { id: string; name: string }[];
-    const seen = new Map<string, string>();
-    for (const card of catalog) {
-      if (
-        card.languages.includes(exploreLang) &&
-        card.year === exploreYear &&
-        !seen.has(card.set_id)
-      ) {
-        seen.set(card.set_id, card.setNames[exploreLang] || card.set_id);
-      }
-    }
-    return Array.from(seen.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [exploreLang, exploreYear, catalog]);
+  function selectYear(year: number) {
+    setExploreYear(year);
+    setExploreSet('');
+    cascade.getSets(year);
+    setExploreStep(3);
+  }
 
-  const setCards = useMemo(() => {
-    if (!exploreLang || !exploreSet) return [];
-    return catalog
-      .filter((c) => c.set_id === exploreSet && c.languages.includes(exploreLang))
-      .sort((a, b) => {
-        const na = parseInt(a.localId, 10);
-        const nb = parseInt(b.localId, 10);
-        if (!isNaN(na) && !isNaN(nb)) return na - nb;
-        return a.localId.localeCompare(b.localId);
-      });
-  }, [exploreLang, exploreSet, catalog]);
+  function selectSet(setCode: string) {
+    setExploreSet(setCode);
+    cascade.getCards(setCode, exploreLang);
+    setExploreStep(4);
+  }
 
   function selectCard(card: CatalogCard) {
     setSelectedCard(card);
@@ -187,21 +156,6 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
     } else {
       setPage('publishSuccess');
     }
-  }
-
-  // --- Loading state ---
-  if (catalogLoading) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="animate-spin text-blue-600 mb-4" size={36} />
-          <p className="text-lg font-black text-slate-900">
-            Cargando catálogo de cartas...
-          </p>
-          <p className="text-sm text-slate-500 mt-1">26,162 cartas disponibles</p>
-        </div>
-      </Layout>
-    );
   }
 
   // --- Card + variant selected → publish form ---
@@ -424,7 +378,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
               placeholder="Ej: Charizard, Pikachu VMAX, リザードン..."
               className="w-full border border-slate-200 rounded-2xl pl-12 pr-4 py-4 outline-none focus:border-blue-500 text-lg"
               autoFocus
@@ -468,7 +422,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
             </div>
           )}
 
-          {searchTerm.length >= 2 && suggestions.length === 0 && (
+          {searchTerm.length >= 2 && !catalogSearch.loading && suggestions.length === 0 && (
             <div className="mt-4 bg-white border border-slate-200 rounded-2xl p-6 text-center">
               <p className="font-black text-slate-900">
                 No se encontraron cartas
@@ -571,10 +525,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
             {availableLanguages.map((lang) => (
               <button
                 key={lang}
-                onClick={() => {
-                  setExploreLang(lang);
-                  setExploreStep(2);
-                }}
+                onClick={() => selectLang(lang)}
                 className="px-6 py-4 rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition shadow-sm"
               >
                 {LANG_LABELS[lang] || lang}
@@ -594,20 +545,21 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
             {availableYears.length} años disponibles en{' '}
             {LANG_LABELS[exploreLang] || exploreLang}
           </p>
-          <div className="flex flex-wrap gap-3">
-            {availableYears.map((year) => (
-              <button
-                key={year}
-                onClick={() => {
-                  setExploreYear(year);
-                  setExploreStep(3);
-                }}
-                className="px-6 py-4 rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition shadow-sm"
-              >
-                {year}
-              </button>
-            ))}
-          </div>
+          {cascade.loading ? (
+            <Loader2 className="animate-spin text-blue-600" size={28} />
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {availableYears.map((year) => (
+                <button
+                  key={year}
+                  onClick={() => selectYear(year)}
+                  className="px-6 py-4 rounded-2xl bg-white border border-slate-200 font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition shadow-sm"
+                >
+                  {year}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -621,20 +573,21 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
             {availableSets.length} expansiones de {exploreYear} en{' '}
             {LANG_LABELS[exploreLang] || exploreLang}
           </p>
-          <div className="flex flex-wrap gap-2">
-            {availableSets.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setExploreSet(s.id);
-                  setExploreStep(4);
-                }}
-                className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition"
-              >
-                {s.name}
-              </button>
-            ))}
-          </div>
+          {cascade.loading ? (
+            <Loader2 className="animate-spin text-blue-600" size={28} />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {availableSets.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => selectSet(s.id)}
+                  className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition"
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -649,6 +602,9 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
             {availableSets.find((s) => s.id === exploreSet)?.name || exploreSet}{' '}
             · {LANG_LABELS[exploreLang] || exploreLang}
           </p>
+          {cascade.loading && (
+            <Loader2 className="animate-spin text-blue-600 mb-4" size={28} />
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {setCards.map((card) => (
               <button

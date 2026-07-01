@@ -1,14 +1,18 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState } from 'react';
 import { ArrowLeft, Plus, Upload, Eye, EyeOff, X, Loader2, Copy } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { CardImage } from '../components/ImagePlaceholder';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import {
-  useCatalog,
+  getLanguages,
+  fetchYears,
+  fetchSets,
+  fetchCards,
   LANG_LABELS,
   getDisplayName,
   type CatalogCard,
+  type SetOption,
 } from '../hooks/useCatalog';
 
 const CONDITIONS = ['Near Mint', 'Excellent', 'Light Played', 'Played'];
@@ -25,6 +29,10 @@ interface BulkRow {
   description: string;
   avgPrice: number | null;
   avgLoading: boolean;
+  availableYears: number[];
+  availableSets: SetOption[];
+  availableCards: CatalogCard[];
+  optionsLoading: boolean;
 }
 
 function emptyRow(key: number): BulkRow {
@@ -40,77 +48,24 @@ function emptyRow(key: number): BulkRow {
     description: '',
     avgPrice: null,
     avgLoading: false,
+    availableYears: [],
+    availableSets: [],
+    availableCards: [],
+    optionsLoading: false,
   };
 }
 
 export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }) {
   const { user } = useAuth();
-  const { catalog, loading: catalogLoading } = useCatalog();
+  const languages = getLanguages().sort((a, b) =>
+    (LANG_LABELS[a] || a).localeCompare(LANG_LABELS[b] || b),
+  );
 
   const [rows, setRows] = useState<BulkRow[]>([emptyRow(1)]);
   const [nextKey, setNextKey] = useState(2);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState('');
   const [previewCard, setPreviewCard] = useState<CatalogCard | null>(null);
-
-  const catalogByLang = useMemo(() => {
-    const langs = new Set<string>();
-    for (const c of catalog) {
-      for (const l of c.languages) langs.add(l);
-    }
-    return Array.from(langs).sort((a, b) =>
-      (LANG_LABELS[a] || a).localeCompare(LANG_LABELS[b] || b)
-    );
-  }, [catalog]);
-
-  const getYearsForLang = useCallback(
-    (lang: string) => {
-      if (!lang) return [];
-      const years = new Set<number>();
-      for (const c of catalog) {
-        if (c.languages.includes(lang) && c.year != null) years.add(c.year);
-      }
-      return Array.from(years).sort((a, b) => b - a);
-    },
-    [catalog]
-  );
-
-  const getSetsForLangAndYear = useCallback(
-    (lang: string, year: string) => {
-      if (!lang || !year) return [] as { id: string; name: string }[];
-      const yr = Number(year);
-      const seen = new Map<string, string>();
-      for (const c of catalog) {
-        if (c.languages.includes(lang) && c.year === yr && !seen.has(c.set_id)) {
-          seen.set(c.set_id, c.setNames[lang] || c.set_id);
-        }
-      }
-      return Array.from(seen.entries())
-        .map(([id, name]) => ({ id, name }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    },
-    [catalog]
-  );
-
-  const getCardsForSet = useCallback(
-    (lang: string, setId: string) => {
-      if (!lang || !setId) return [];
-      return catalog
-        .filter((c) => c.set_id === setId && c.languages.includes(lang))
-        .sort((a, b) => {
-          const na = parseInt(a.localId, 10);
-          const nb = parseInt(b.localId, 10);
-          if (!isNaN(na) && !isNaN(nb)) return na - nb;
-          return a.localId.localeCompare(b.localId);
-        });
-    },
-    [catalog]
-  );
-
-  const findCard = useCallback(
-    (cardId: string) => catalog.find((c) => c.id === cardId) || null,
-    [catalog]
-  );
 
   function updateRow(key: number, patch: Partial<BulkRow>) {
     setRows((prev) =>
@@ -149,20 +104,50 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
     setNextKey((k) => k + 1);
   }
 
-  function changeLang(key: number, lang: string) {
-    updateRow(key, { lang, year: '', setId: '', cardId: '', variant: '', avgPrice: null });
+  async function changeLang(key: number, lang: string) {
+    updateRow(key, {
+      lang, year: '', setId: '', cardId: '', variant: '', avgPrice: null,
+      availableYears: [], availableSets: [], availableCards: [], optionsLoading: true,
+    });
+    try {
+      const years = await fetchYears(lang);
+      updateRow(key, { availableYears: years, optionsLoading: false });
+    } catch {
+      updateRow(key, { optionsLoading: false });
+    }
   }
 
-  function changeYear(key: number, year: string) {
-    updateRow(key, { year, setId: '', cardId: '', variant: '', avgPrice: null });
+  async function changeYear(key: number, year: string) {
+    updateRow(key, {
+      year, setId: '', cardId: '', variant: '', avgPrice: null,
+      availableSets: [], availableCards: [], optionsLoading: true,
+    });
+    try {
+      const sets = await fetchSets(Number(year));
+      updateRow(key, { availableSets: sets, optionsLoading: false });
+    } catch {
+      updateRow(key, { optionsLoading: false });
+    }
   }
 
-  function changeSet(key: number, setId: string) {
-    updateRow(key, { setId, cardId: '', variant: '', avgPrice: null });
+  async function changeSet(key: number, setId: string) {
+    const row = rows.find((r) => r.key === key);
+    if (!row) return;
+    updateRow(key, {
+      setId, cardId: '', variant: '', avgPrice: null,
+      availableCards: [], optionsLoading: true,
+    });
+    try {
+      const cards = await fetchCards(setId, row.lang);
+      updateRow(key, { availableCards: cards, optionsLoading: false });
+    } catch {
+      updateRow(key, { optionsLoading: false });
+    }
   }
 
   async function changeCard(key: number, cardId: string) {
-    const card = findCard(cardId);
+    const row = rows.find((r) => r.key === key);
+    const card = row?.availableCards.find((c) => c.id === cardId);
     if (!card) return;
     updateRow(key, { cardId, variant: '', avgLoading: true, avgPrice: null });
     const name = getDisplayName(card);
@@ -173,8 +158,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
       .eq('set_name', card.set_id);
     if (data && data.length > 0) {
       const avg = Math.round(
-        data.reduce((sum: number, r: { price: number }) => sum + r.price, 0) /
-          data.length
+        data.reduce((sum: number, r: { price: number }) => sum + r.price, 0) / data.length,
       );
       updateRow(key, { avgPrice: avg, avgLoading: false });
     } else {
@@ -193,7 +177,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
     setPublishing(true);
 
     const inserts = validRows.map((r) => {
-      const card = findCard(r.cardId)!;
+      const card = r.availableCards.find((c) => c.id === r.cardId)!;
       return {
         seller_id: user?.id,
         name: getDisplayName(card),
@@ -220,19 +204,6 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
     } else {
       setPage('publishSuccess');
     }
-  }
-
-  if (catalogLoading) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="animate-spin text-blue-600 mb-4" size={36} />
-          <p className="text-lg font-black text-slate-900">
-            Cargando catálogo de cartas...
-          </p>
-        </div>
-      </Layout>
-    );
   }
 
   return (
@@ -275,10 +246,9 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
             </thead>
             <tbody>
               {rows.map((row, idx) => {
-                const years = getYearsForLang(row.lang);
-                const sets = getSetsForLangAndYear(row.lang, row.year);
-                const cardsInSet = getCardsForSet(row.lang, row.setId);
-                const card = row.cardId ? findCard(row.cardId) : null;
+                const card = row.cardId
+                  ? row.availableCards.find((c) => c.id === row.cardId) ?? null
+                  : null;
                 const variants = card?.variants ?? [];
 
                 return (
@@ -296,7 +266,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                         className="w-full min-w-[110px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500"
                       >
                         <option value="">—</option>
-                        {catalogByLang.map((l) => (
+                        {languages.map((l) => (
                           <option key={l} value={l}>
                             {LANG_LABELS[l] || l}
                           </option>
@@ -306,53 +276,65 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
 
                     {/* Año */}
                     <td className="px-3 py-2">
-                      <select
-                        value={row.year}
-                        onChange={(e) => changeYear(row.key, e.target.value)}
-                        disabled={!row.lang}
-                        className="w-full min-w-[80px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
-                      >
-                        <option value="">—</option>
-                        {years.map((y) => (
-                          <option key={y} value={y}>
-                            {y}
-                          </option>
-                        ))}
-                      </select>
+                      {row.optionsLoading && !row.year ? (
+                        <Loader2 size={16} className="animate-spin text-blue-500 mx-2" />
+                      ) : (
+                        <select
+                          value={row.year}
+                          onChange={(e) => changeYear(row.key, e.target.value)}
+                          disabled={!row.lang || row.optionsLoading}
+                          className="w-full min-w-[80px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
+                        >
+                          <option value="">—</option>
+                          {row.availableYears.map((y) => (
+                            <option key={y} value={y}>
+                              {y}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
 
                     {/* Expansión */}
                     <td className="px-3 py-2">
-                      <select
-                        value={row.setId}
-                        onChange={(e) => changeSet(row.key, e.target.value)}
-                        disabled={!row.year}
-                        className="w-full min-w-[150px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
-                      >
-                        <option value="">—</option>
-                        {sets.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
+                      {row.optionsLoading && row.year && !row.setId ? (
+                        <Loader2 size={16} className="animate-spin text-blue-500 mx-2" />
+                      ) : (
+                        <select
+                          value={row.setId}
+                          onChange={(e) => changeSet(row.key, e.target.value)}
+                          disabled={!row.year || row.optionsLoading}
+                          className="w-full min-w-[150px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
+                        >
+                          <option value="">—</option>
+                          {row.availableSets.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
 
                     {/* Carta */}
                     <td className="px-3 py-2">
-                      <select
-                        value={row.cardId}
-                        onChange={(e) => changeCard(row.key, e.target.value)}
-                        disabled={!row.setId}
-                        className="w-full min-w-[180px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
-                      >
-                        <option value="">—</option>
-                        {cardsInSet.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            #{c.localId} · {getDisplayName(c)}
-                          </option>
-                        ))}
-                      </select>
+                      {row.optionsLoading && row.setId && !row.cardId ? (
+                        <Loader2 size={16} className="animate-spin text-blue-500 mx-2" />
+                      ) : (
+                        <select
+                          value={row.cardId}
+                          onChange={(e) => changeCard(row.key, e.target.value)}
+                          disabled={!row.setId || row.optionsLoading}
+                          className="w-full min-w-[180px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 disabled:opacity-40"
+                        >
+                          <option value="">—</option>
+                          {row.availableCards.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              #{c.localId} · {getDisplayName(c)}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
 
                     {/* Variante */}
