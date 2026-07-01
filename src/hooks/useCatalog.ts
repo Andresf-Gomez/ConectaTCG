@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 
 export interface CatalogCard {
   id: string;                      // tcgdex_id  e.g. 'base1-1'
+  dbId: number;                    // bigint PK from catalog_cards
   localId: string;                 // card number within set
   names: Record<string, string>;
   setNames: Record<string, string>;
@@ -68,6 +69,7 @@ interface SupabaseCatalogRow {
 function mapRow(row: SupabaseCatalogRow): CatalogCard {
   return {
     id: row.tcgdex_id,
+    dbId: row.id,
     localId: row.number ?? '',
     names: row.names ?? {},
     setNames: row.sets?.names ?? {},

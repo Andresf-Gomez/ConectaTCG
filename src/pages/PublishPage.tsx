@@ -134,22 +134,17 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
     if (!selectedCard) return;
     setPublishError('');
     setPublishing(true);
-    const { error } = await supabase.from('cards').insert({
+    const { error } = await supabase.from('listings').insert({
       seller_id: user?.id,
-      name: getDisplayName(selectedCard, exploreLang),
-      set_name: bestName(selectedCard.setNames, exploreLang, selectedCard.set_id),
-      number: selectedCard.id,
-      rarity: selectedCard.rarity,
-      type: 'Carta single',
+      catalog_card_id: selectedCard.dbId,
       language: exploreLang || selectedCard.languages[0] || 'en',
-      image: selectedCard.image_url,
+      variant: exploreVariant,
       condition,
       price,
-      city,
       description,
-      seller_name: user?.email ?? 'Vendedor',
-      variant: exploreVariant,
-      year: selectedCard.year,
+      city,
+      quantity: 1,
+      status: 'active',
     });
     setPublishing(false);
     if (error) {

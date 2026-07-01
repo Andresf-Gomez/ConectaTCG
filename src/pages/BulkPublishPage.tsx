@@ -26,6 +26,7 @@ interface BulkRow {
   cardId: string;
   variant: string;
   condition: string;
+  quantity: number;
   price: number;
   description: string;
   avgPrice: number | null;
@@ -45,6 +46,7 @@ function emptyRow(key: number): BulkRow {
     cardId: '',
     variant: '',
     condition: 'Near Mint',
+    quantity: 1,
     price: 0,
     description: '',
     avgPrice: null,
@@ -152,12 +154,11 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
     const card = row?.availableCards.find((c) => c.id === cardId);
     if (!card) return;
     updateRow(key, { cardId, variant: '', avgLoading: true, avgPrice: null });
-    const name = getDisplayName(card, row.lang);
     const { data } = await supabase
-      .from('cards')
+      .from('listings')
       .select('price')
-      .eq('name', name)
-      .eq('set_name', card.set_id);
+      .eq('catalog_card_id', card.dbId)
+      .eq('language', row.lang);
     if (data && data.length > 0) {
       const avg = Math.round(
         data.reduce((sum: number, r: { price: number }) => sum + r.price, 0) / data.length,
@@ -182,24 +183,18 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
       const card = r.availableCards.find((c) => c.id === r.cardId)!;
       return {
         seller_id: user?.id,
-        name: getDisplayName(card, r.lang),
-        set_name: bestName(card.setNames, r.lang, card.set_id),
-        number: card.id,
-        rarity: card.rarity,
-        type: 'Carta single',
+        catalog_card_id: card.dbId,
         language: r.lang,
-        image: card.image_url,
-        condition: r.condition,
-        price: r.price,
-        city: '',
-        description: r.description,
-        seller_name: user?.email ?? 'Vendedor',
         variant: r.variant,
-        year: card.year,
+        condition: r.condition,
+        quantity: r.quantity,
+        price: r.price,
+        description: r.description,
+        status: 'active',
       };
     });
 
-    const { error } = await supabase.from('cards').insert(inserts);
+    const { error } = await supabase.from('listings').insert(inserts);
     setPublishing(false);
     if (error) {
       setPublishError(error.message);
@@ -238,6 +233,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                 <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Expansión</th>
                 <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap min-w-[180px]">Carta</th>
                 <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Variante</th>
+                <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Cant.</th>
                 <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Condición</th>
                 <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Precio prom.</th>
                 <th className="px-3 py-3 text-left font-bold text-slate-700 whitespace-nowrap">Precio venta</th>
@@ -356,6 +352,19 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                           </option>
                         ))}
                       </select>
+                    </td>
+
+                    {/* Cantidad */}
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={1}
+                        value={row.quantity}
+                        onChange={(e) =>
+                          updateRow(row.key, { quantity: Math.max(1, Number(e.target.value)) })
+                        }
+                        className="w-full min-w-[60px] border border-slate-200 rounded-xl px-2 py-2 text-sm outline-none focus:border-blue-500 text-center"
+                      />
                     </td>
 
                     {/* Condición */}
