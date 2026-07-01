@@ -18,7 +18,8 @@ export interface CatalogCard {
 
 export interface SetOption {
   id: string;    // set_code
-  name: string;
+  name: string;  // best available name (en or first)
+  names: Record<string, string>;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -85,8 +86,18 @@ const setCodeToDbId = new Map<string, number>();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-export function getDisplayName(card: CatalogCard): string {
-  return card.names.es || card.names.en || Object.values(card.names)[0] || card.id;
+// Resolves a multilingual names object to the best available string.
+// Priority: requested lang → English → first available → fallback code.
+export function bestName(
+  names: Record<string, string>,
+  lang: string,
+  fallback: string,
+): string {
+  return (lang && names[lang]) || names.en || Object.values(names)[0] || fallback;
+}
+
+export function getDisplayName(card: CatalogCard, lang = ''): string {
+  return bestName(card.names, lang, card.id);
 }
 
 export function getLanguages(): string[] {
@@ -118,7 +129,12 @@ export async function fetchSets(year: number): Promise<SetOption[]> {
   )
     .map((s) => {
       setCodeToDbId.set(s.set_code, s.id);
-      return { id: s.set_code, name: s.names?.en || s.set_code };
+      const names = s.names ?? {};
+      return {
+        id: s.set_code,
+        name: names.en || Object.values(names)[0] || s.set_code,
+        names,
+      };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
   setsCache.set(year, sets);

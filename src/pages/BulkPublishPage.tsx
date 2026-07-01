@@ -11,6 +11,7 @@ import {
   fetchCards,
   LANG_LABELS,
   getDisplayName,
+  bestName,
   type CatalogCard,
   type SetOption,
 } from '../hooks/useCatalog';
@@ -150,7 +151,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
     const card = row?.availableCards.find((c) => c.id === cardId);
     if (!card) return;
     updateRow(key, { cardId, variant: '', avgLoading: true, avgPrice: null });
-    const name = getDisplayName(card);
+    const name = getDisplayName(card, row.lang);
     const { data } = await supabase
       .from('cards')
       .select('price')
@@ -180,8 +181,8 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
       const card = r.availableCards.find((c) => c.id === r.cardId)!;
       return {
         seller_id: user?.id,
-        name: getDisplayName(card),
-        set_name: card.setNames[r.lang] || card.set_id,
+        name: getDisplayName(card, r.lang),
+        set_name: bestName(card.setNames, r.lang, card.set_id),
         number: card.id,
         rarity: card.rarity,
         type: 'Carta single',
@@ -309,7 +310,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                           <option value="">—</option>
                           {row.availableSets.map((s) => (
                             <option key={s.id} value={s.id}>
-                              {s.name}
+                              {bestName(s.names, row.lang, s.id)}
                             </option>
                           ))}
                         </select>
@@ -330,7 +331,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
                           <option value="">—</option>
                           {row.availableCards.map((c) => (
                             <option key={c.id} value={c.id}>
-                              #{c.localId} · {getDisplayName(c)}
+                              #{c.localId} · {getDisplayName(c, row.lang)}
                             </option>
                           ))}
                         </select>
@@ -521,7 +522,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
               />
             </div>
             <p className="mt-3 text-sm text-slate-500 text-center">
-              {previewCard.set_id} · #{previewCard.localId}
+              {bestName(previewCard.setNames, '', previewCard.set_id)} · #{previewCard.localId}
             </p>
           </div>
         </div>

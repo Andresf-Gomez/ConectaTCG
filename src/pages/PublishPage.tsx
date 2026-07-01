@@ -9,6 +9,7 @@ import {
   useCatalogCascade,
   LANG_LABELS,
   getDisplayName,
+  bestName,
   type CatalogCard,
 } from '../hooks/useCatalog';
 
@@ -135,8 +136,8 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
     setPublishing(true);
     const { error } = await supabase.from('cards').insert({
       seller_id: user?.id,
-      name: getDisplayName(selectedCard),
-      set_name: selectedCard.setNames[exploreLang] || selectedCard.set_id,
+      name: getDisplayName(selectedCard, exploreLang),
+      set_name: bestName(selectedCard.setNames, exploreLang, selectedCard.set_id),
       number: selectedCard.id,
       rarity: selectedCard.rarity,
       type: 'Carta single',
@@ -253,10 +254,10 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
               </div>
               <div className="mt-4">
                 <p className="font-black text-lg text-slate-900">
-                  {getDisplayName(selectedCard)}
+                  {getDisplayName(selectedCard, exploreLang)}
                 </p>
                 <p className="text-sm text-slate-500">
-                  {selectedCard.setNames[exploreLang] || selectedCard.set_id}
+                  {bestName(selectedCard.setNames, exploreLang, selectedCard.set_id)}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
                   {LANG_LABELS[exploreLang] || exploreLang} · {exploreVariant}
@@ -448,8 +449,8 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                   />
                 </div>
                 <div>
-                  <p className="font-black text-slate-900">{getDisplayName(selectedCard)}</p>
-                  <p className="text-sm text-slate-500">{selectedCard.set_id} · {selectedCard.year}</p>
+                  <p className="font-black text-slate-900">{getDisplayName(selectedCard, exploreLang)}</p>
+                  <p className="text-sm text-slate-500">{bestName(selectedCard.setNames, exploreLang, selectedCard.set_id)} · {selectedCard.year}</p>
                 </div>
               </div>
               <h3 className="text-lg font-black text-slate-900 mb-3">
@@ -583,7 +584,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                   onClick={() => selectSet(s.id)}
                   className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition"
                 >
-                  {s.name}
+                  {bestName(s.names, exploreLang, s.id)}
                 </button>
               ))}
             </div>
@@ -599,7 +600,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
           </h3>
           <p className="text-sm text-slate-500 mb-4">
             {setCards.length} cartas en{' '}
-            {availableSets.find((s) => s.id === exploreSet)?.name || exploreSet}{' '}
+            {bestName(availableSets.find((s) => s.id === exploreSet)?.names ?? {}, exploreLang, exploreSet)}{' '}
             · {LANG_LABELS[exploreLang] || exploreLang}
           </p>
           {cascade.loading && (
@@ -648,7 +649,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
               <div>
                 <p className="font-black text-slate-900">{getDisplayName(selectedCard)}</p>
                 <p className="text-sm text-slate-500">
-                  {availableSets.find((s) => s.id === exploreSet)?.name || exploreSet}
+                  {bestName(availableSets.find((s) => s.id === exploreSet)?.names ?? {}, exploreLang, exploreSet)}
                 </p>
                 <p className="text-xs text-slate-400">
                   {LANG_LABELS[exploreLang] || exploreLang} · {exploreYear}
