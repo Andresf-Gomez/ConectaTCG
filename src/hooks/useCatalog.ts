@@ -25,18 +25,21 @@ export interface SetOption {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const LANG_LABELS: Record<string, string> = {
-  en: 'English',
+  en: 'Inglés',
   es: 'Español',
-  fr: 'Français',
-  de: 'Deutsch',
+  fr: 'Francés',
+  de: 'Alemán',
   it: 'Italiano',
-  ja: '日本語',
-  pt: 'Português',
-  ko: '한국어',
-  'zh-cn': '中文简体',
-  'zh-tw': '中文繁體',
-  th: 'ไทย',
-  id: 'Indonesia',
+  pt: 'Portugués',
+  ja: 'Japonés',
+  ko: 'Coreano',
+  th: 'Tailandés',
+  id: 'Indonesio',
+  'zh-cn': 'Chino simplificado',
+  'zh-tw': 'Chino tradicional',
+  ru: 'Ruso',
+  nl: 'Holandés',
+  pl: 'Polaco',
 };
 
 const POKEMON_GAME_ID = 6;

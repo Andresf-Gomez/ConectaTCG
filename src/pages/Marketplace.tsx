@@ -6,6 +6,7 @@ import { CardTile } from '../components/CardTile';
 import { type Card } from '../data/cards';
 import { money } from '../utils/money';
 import { useCards, type GroupedCard } from '../hooks/useCards';
+import { LANG_LABELS } from '../hooks/useCatalog';
 
 export function Marketplace({
   setPage,
@@ -34,13 +35,7 @@ export function Marketplace({
     'Cartagena',
     'Pereira',
   ];
-  const LANG_MAP: Record<string, string> = {
-    en: 'Inglés', es: 'Español', fr: 'Français', de: 'Deutsch',
-    it: 'Italiano', ja: 'Japonés', pt: 'Português', ko: '한국어',
-    'zh-cn': 'Chino simplificado', 'zh-tw': 'Chino tradicional',
-    th: 'ไทย', id: 'Indonesia',
-  };
-  const normalizeLang = (lang: string) => LANG_MAP[lang] || lang || 'Español';
+  const normalizeLang = (lang: string) => LANG_LABELS[lang] || lang || 'Español';
 
   const expansions = ['Todas', ...Array.from(new Set(allCards.map((c) => c.set)))];
   const languages = ['Todos', ...Array.from(new Set(allCards.map((c) => normalizeLang(c.language))))];

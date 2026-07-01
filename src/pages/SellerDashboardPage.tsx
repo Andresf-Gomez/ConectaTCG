@@ -12,14 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { money } from '../utils/money';
 import type { SupabaseCard } from '../hooks/useCards';
-
-const LANG_MAP: Record<string, string> = {
-  en: 'Inglés', es: 'Español', fr: 'Français', de: 'Deutsch',
-  it: 'Italiano', ja: 'Japonés', pt: 'Português', ko: '한국어',
-  'zh-cn': 'Chino simplificado', 'zh-tw': 'Chino tradicional',
-  th: 'Tailandés', id: 'Indonesio', nl: 'Holandés', pl: 'Polaco',
-  ru: 'Ruso', 'pt-pt': 'Portugués (PT)',
-};
+import { LANG_LABELS } from '../hooks/useCatalog';
 
 const YEAR_NONE = '__none__';
 
@@ -272,7 +265,7 @@ function InventorySection({
         >
           <option value="">Idioma: Todos</option>
           {availableLangs.map(l => (
-            <option key={l} value={l}>{LANG_MAP[l] || l}</option>
+            <option key={l} value={l}>{LANG_LABELS[l] || l}</option>
           ))}
         </select>
 
