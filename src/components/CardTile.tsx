@@ -2,6 +2,7 @@ import type { Card } from '../data/cards';
 import type { GroupedCard } from '../hooks/useCards';
 import { money } from '../utils/money';
 import { CardImage } from './ImagePlaceholder';
+import { LANG_LABELS } from '../hooks/useCatalog';
 
 export function CardTile({ card, onClick }: { card: Card | GroupedCard; onClick: () => void }) {
   const best = Math.min(...card.offers.map((o) => o.price));
@@ -22,10 +23,10 @@ export function CardTile({ card, onClick }: { card: Card | GroupedCard; onClick:
           <div className="min-w-0">
             <h3 className="font-black text-slate-900 dark:text-white text-sm sm:text-lg truncate">{card.name}</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{card.set}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 hidden sm:block">Idioma: {card.language || 'Español'}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 hidden sm:block">Idioma: {LANG_LABELS[card.language] || card.language || 'Español'}</p>
           </div>
           <span className="flex-shrink-0 h-fit text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 font-bold px-2 py-1 rounded-full">
-            {card.offers.length} ofertas
+            {card.offers.length} {card.offers.length === 1 ? 'oferta' : 'ofertas'}
           </span>
         </div>
         <div className="mt-3 flex justify-between items-end">
