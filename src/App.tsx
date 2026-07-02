@@ -23,6 +23,7 @@ import { ContactPage } from './pages/ContactPage';
 import { LoginPage } from './pages/LoginPage';
 import { RequestSellerPage } from './pages/RequestSellerPage';
 import { AdminPage } from './pages/AdminPage';
+import { AdminCatalogPage } from './pages/AdminCatalogPage';
 import { SellerDashboardPage } from './pages/SellerDashboardPage';
 import { cards, initialTransactions, type Card } from './data/cards';
 import type { GroupedCard } from './hooks/useCards';
@@ -54,7 +55,7 @@ function AppContent() {
       setPage('login');
     } else if ((target === 'publish' || target === 'bulkPublish') && user && role === 'buyer') {
       setPage('requestSeller');
-    } else if (target === 'admin' && role !== 'admin') {
+    } else if ((target === 'admin' || target === 'adminCatalog') && role !== 'admin') {
       setPage('home');
     } else if (target === 'sellerDashboard' && role === 'buyer') {
       setPage('requestSeller');
@@ -131,6 +132,7 @@ function AppContent() {
           {page === 'login' && <LoginPage setPage={navigate} redirectTo={redirectAfterLogin} />}
           {page === 'requestSeller' && <RequestSellerPage setPage={navigate} />}
           {page === 'admin' && role === 'admin' && <AdminPage setPage={navigate} />}
+          {page === 'adminCatalog' && role === 'admin' && <AdminCatalogPage setPage={navigate} />}
           {page === 'sellerDashboard' && (role === 'seller' || role === 'admin') && (
             <SellerDashboardPage setPage={navigate} />
           )}

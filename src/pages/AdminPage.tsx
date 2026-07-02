@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, XCircle, Clock, ShieldCheck } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ShieldCheck, FileJson } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -86,6 +86,19 @@ export function AdminPage({ setPage }: { setPage: (page: string) => void }) {
             <p className="text-slate-500 dark:text-slate-400 text-sm">Solicitudes de vendedor</p>
           </div>
         </div>
+
+        <button
+          onClick={() => setPage('adminCatalog')}
+          className="flex items-center gap-3 w-full mb-8 px-5 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-blue-400 dark:hover:border-blue-600 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition text-left"
+        >
+          <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
+            <FileJson size={18} className="text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-800 dark:text-white">Gestión de catálogo</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Subir y actualizar cartas desde base_depurada.json</p>
+          </div>
+        </button>
 
         <div className="flex gap-2 mb-6">
           {tabs.map((t) => {
