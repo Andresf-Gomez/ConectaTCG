@@ -87,6 +87,13 @@ const setsCache = new Map<string, SetOption[]>();
 const cardsCache = new Map<string, CatalogCard[]>();
 const setCodeToDbId = new Map<string, number>();
 
+export function clearCatalogCache() {
+  yearsCache.clear();
+  setsCache.clear();
+  cardsCache.clear();
+  setCodeToDbId.clear();
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 // Resolves a multilingual names object to the best available string.
