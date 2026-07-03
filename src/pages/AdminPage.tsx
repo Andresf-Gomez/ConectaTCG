@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle, XCircle, Clock, ShieldCheck, FileJson, Layers } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ShieldCheck, FileJson, Layers, Gamepad2, BookOpen } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -109,8 +109,34 @@ export function AdminPage({ setPage }: { setPage: (page: string) => void }) {
               <Layers size={18} className="text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-white">Editar catálogo</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">Sets</p>
               <p className="text-xs text-slate-400 dark:text-slate-500">Crear y editar sets individualmente</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setPage('adminGames')}
+            className="flex items-center gap-3 w-full px-5 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-green-400 dark:hover:border-green-600 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition text-left"
+          >
+            <div className="w-9 h-9 rounded-xl bg-green-100 dark:bg-green-950/40 flex items-center justify-center flex-shrink-0">
+              <Gamepad2 size={18} className="text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">Juegos</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Crear y editar juegos (games)</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setPage('adminCards')}
+            className="flex items-center gap-3 w-full px-5 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-orange-400 dark:hover:border-orange-600 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition text-left"
+          >
+            <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center flex-shrink-0">
+              <BookOpen size={18} className="text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">Cartas</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Buscar y editar cartas del catálogo</p>
             </div>
           </button>
         </div>
