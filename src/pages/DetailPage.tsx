@@ -124,6 +124,7 @@ export function DetailPage({ card, setPage, setSelectedOffer, setSelectedSeller 
           <CardImage
             src={card.image}
             alt={card.name}
+            size="full"
             className="max-h-[520px] object-contain drop-shadow-2xl"
             placeholderSize="lg"
           />

@@ -244,6 +244,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                 <CardImage
                   src={selectedCard.image_url}
                   alt={getDisplayName(selectedCard)}
+                  size="card"
                   className="max-h-64 object-contain rounded-xl"
                 />
               </div>
@@ -396,6 +397,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                     <CardImage
                       src={card.image_url}
                       alt={getDisplayName(card)}
+                      size="thumb"
                       className="w-full h-full object-contain"
                       placeholderSize="sm"
                     />
@@ -439,6 +441,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                   <CardImage
                     src={selectedCard.image_url}
                     alt={getDisplayName(selectedCard)}
+                    size="thumb"
                     className="w-full h-full object-contain"
                     placeholderSize="sm"
                   />
@@ -612,6 +615,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                   <CardImage
                     src={card.image_url}
                     alt={getDisplayName(card)}
+                    size="thumb"
                     className="max-h-full object-contain group-hover:scale-105 transition"
                     placeholderSize="sm"
                   />
@@ -637,6 +641,7 @@ export function PublishPage({ setPage }: { setPage: (page: string) => void }) {
                 <CardImage
                   src={selectedCard.image_url}
                   alt={getDisplayName(selectedCard)}
+                  size="thumb"
                   className="w-full h-full object-contain"
                   placeholderSize="sm"
                 />

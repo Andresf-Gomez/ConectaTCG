@@ -527,6 +527,7 @@ export function BulkPublishPage({ setPage }: { setPage: (page: string) => void }
               <CardImage
                 src={previewCard.image_url}
                 alt={getDisplayName(previewCard)}
+                size="full"
                 className="max-h-80 object-contain rounded-xl"
                 placeholderSize="lg"
               />

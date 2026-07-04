@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { WalletCards } from 'lucide-react';
+import { getCardImageUrl } from '../lib/imageUrl';
 
 export function ImagePlaceholder({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const iconSize = size === 'sm' ? 20 : size === 'lg' ? 48 : 32;
@@ -18,22 +19,29 @@ export function CardImage({
   alt,
   className,
   placeholderSize = 'md',
+  size = 'card',
 }: {
   src: string | null | undefined;
   alt?: string;
   className?: string;
   placeholderSize?: 'sm' | 'md' | 'lg';
+  size?: 'thumb' | 'card' | 'full';
 }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   if (!src || failed) return <ImagePlaceholder size={placeholderSize} />;
 
+  const transformedSrc = getCardImageUrl(src, size) ?? src;
+
   return (
     <img
-      src={src}
+      src={transformedSrc}
       alt={alt}
-      className={className}
+      loading="lazy"
+      onLoad={() => setLoaded(true)}
       onError={() => setFailed(true)}
+      className={`transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${className ?? ''}`}
     />
   );
 }
