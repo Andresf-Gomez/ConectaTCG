@@ -7,6 +7,7 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { Layout } from '../components/Layout';
+import { CardImage } from '../components/ImagePlaceholder';
 import { Metric } from '../components/Metric';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -430,20 +431,17 @@ function InventorySection({
                         {/* Thumbnail */}
                         <td className="px-3 py-2">
                           <button
-                            onClick={() => imgSrc && setModalSrc(imgSrc)}
+                            onClick={() => { if (imgSrc) setModalSrc(imgSrc); }}
                             className="w-10 h-14 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 hover:ring-2 hover:ring-blue-400 transition"
                             title="Ver imagen"
                           >
-                            {imgSrc ? (
-                              <img
-                                src={imgSrc}
-                                alt={card.name}
-                                className="w-full h-full object-cover"
-                                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                              />
-                            ) : (
-                              <Package size={16} className="text-slate-300 dark:text-slate-600" />
-                            )}
+                            <CardImage
+                              src={imgSrc || null}
+                              size="thumb"
+                              alt={card.name}
+                              className="w-full h-full object-cover"
+                              placeholderSize="sm"
+                            />
                           </button>
                         </td>
 
@@ -597,11 +595,15 @@ function InventorySection({
             >
               <X size={16} />
             </button>
-            <img
-              src={modalSrc}
-              alt="Vista previa"
-              className="w-full rounded-2xl shadow-2xl"
-            />
+            <div className="min-h-[200px] flex items-center justify-center">
+              <CardImage
+                src={modalSrc}
+                size="full"
+                alt="Vista previa"
+                placeholderSize="lg"
+                className="w-full rounded-2xl shadow-2xl"
+              />
+            </div>
           </div>
         </div>
       )}

@@ -15,6 +15,7 @@ export function CardTile({ card, onClick }: { card: Card | GroupedCard; onClick:
         <CardImage
           src={card.image}
           alt={card.name}
+          size="card"
           className="max-h-full object-contain group-hover:scale-105 transition"
         />
       </div>

@@ -1,0 +1,22 @@
+[
+  {
+    "tcgdex_id": "ecard3-149",
+    "image_url": "https://assets.tcgdex.net/en/ecard/ecard3/149/high.png",
+    "reason": "Bad Request"
+  },
+  {
+    "tcgdex_id": "ex13-55",
+    "image_url": "https://assets.tcgdex.net/en/ex/ex13/55/high.png",
+    "reason": "Bad Request"
+  },
+  {
+    "tcgdex_id": "sv04.5-214",
+    "image_url": "https://assets.tcgdex.net/en/sv/sv04.5/214/high.png",
+    "reason": "Timeout (>30s)"
+  },
+  {
+    "tcgdex_id": "SV4a-095",
+    "image_url": "https://assets.tcgdex.net/ja/SV/SV4a/095/high.png",
+    "reason": "Bad Request"
+  }
+]
