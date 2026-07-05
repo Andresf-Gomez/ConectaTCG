@@ -197,7 +197,7 @@ export async function searchCards(query: string): Promise<CatalogCard[]> {
     .or(`names->>en.ilike.%${q}%,names->>es.ilike.%${q}%`)
     .limit(20);
   if (error) throw error;
-  return (data as unknown as SupabaseCatalogRow[] ?? []).map(mapRow);
+  return (data as unknown as SupabaseCatalogRow[] ?? []).map(row => mapRow(row));
 }
 
 // ─── useCatalogSearch — for PublishPage search mode ───────────────────────────
