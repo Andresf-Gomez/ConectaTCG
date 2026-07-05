@@ -90,7 +90,7 @@ export function MyOrdersPage({ setPage }: { setPage: (p: string) => void }) {
       .eq('buyer_id', user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        setOrders((data as Order[]) ?? []);
+        setOrders((data as unknown as Order[]) ?? []);
         setLoading(false);
       });
   }, [user]);

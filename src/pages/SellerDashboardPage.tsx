@@ -682,8 +682,8 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
           .order('created_at', { ascending: false }),
       ]);
       setInventory(((invRes.data as unknown as ListingJoinRow[]) ?? []).map(mapListing));
-      setSalesOrders((salesRes.data as Order[]) ?? []);
-      setBuyOrders((buysRes.data as Order[]) ?? []);
+      setSalesOrders((salesRes.data as unknown as Order[]) ?? []);
+      setBuyOrders((buysRes.data as unknown as Order[]) ?? []);
       setLoading(false);
     }
     fetchAll();
@@ -700,8 +700,8 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
       supabase.from('orders').select(histSelect).eq('seller_id', uid).gte('created_at', start).order('created_at', { ascending: false }),
       supabase.from('orders').select(histSelect).eq('buyer_id',  uid).gte('created_at', start).order('created_at', { ascending: false }),
     ]).then(([s, b]) => {
-      setAllSalesOrders((s.data as Order[]) ?? []);
-      setAllBuyOrders((b.data as Order[]) ?? []);
+      setAllSalesOrders((s.data as unknown as Order[]) ?? []);
+      setAllBuyOrders((b.data as unknown as Order[]) ?? []);
     });
   }, [user, tab, dateFilter]);
 
