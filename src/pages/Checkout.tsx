@@ -1,20 +1,79 @@
 import { useState } from 'react';
-import { ShieldCheck, CreditCard, WalletCards, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, CreditCard, WalletCards, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { money } from '../utils/money';
+import { supabase } from '../lib/supabase';
 import type { Card, Offer } from '../data/cards';
 
-export function Checkout({ card, offer, setPage, setOrderPlaced }: { card: Card; offer: Offer; setPage: (page: string) => void; setOrderPlaced: (v: boolean) => void }) {
+interface CheckoutProps {
+  card: Card;
+  offer: Offer;
+  listingId?: string;   // real UUID when coming from a live listing
+  setPage: (page: string) => void;
+  setOrderPlaced: (v: boolean) => void;
+}
+
+export function Checkout({ card, offer, listingId, setPage, setOrderPlaced }: CheckoutProps) {
   if (!card || !offer) return null;
 
   const platformBalance = 180000;
   const [usePlatformBalance, setUsePlatformBalance] = useState(false);
+  const [address, setAddress] = useState('Calle 123 #45-67');
+  const [city, setCity] = useState('Bogotá');
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const productTotal = offer.price;
   const balanceUsed = usePlatformBalance
     ? Math.min(platformBalance, productTotal)
     : 0;
   const totalToPay = productTotal - balanceUsed;
+
+  async function handleOrder() {
+    setSubmitting(true);
+    setError(null);
+
+    if (listingId) {
+      // Real path: call place_order RPC then immediately confirm as paid (mock payment)
+      const shipping = { address, city, notes: notes || undefined };
+
+      const { data: orderId, error: placeErr } = await supabase.rpc('place_order', {
+        p_listing_id: listingId,
+        p_quantity: 1,
+        p_shipping_address: shipping,
+      });
+
+      if (placeErr) {
+        const msg: Record<string, string> = {
+          insufficient_stock:     'Ya no hay stock disponible para esta carta.',
+          listing_not_active:     'Este listing ya no está disponible.',
+          listing_not_found:      'No se encontró el listing.',
+          cannot_buy_own_listing: 'No puedes comprar tu propia publicación.',
+          unauthenticated:        'Debes iniciar sesión para comprar.',
+        };
+        setError(msg[placeErr.message] ?? 'Error al procesar el pedido. Intenta de nuevo.');
+        setSubmitting(false);
+        return;
+      }
+
+      // Mock payment confirmation — Phase 4 replaces this with gateway webhook
+      const { error: payErr } = await supabase.rpc('update_order_status', {
+        p_order_id: orderId as string,
+        p_new_status: 'paid',
+      });
+
+      if (payErr) {
+        setError('Pedido creado pero no se pudo confirmar el pago. Contáctanos.');
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    // Both real and mock paths end here
+    setOrderPlaced(true);
+    setPage('orderSuccess');
+  }
 
   return (
     <Layout>
@@ -93,18 +152,29 @@ export function Checkout({ card, offer, setPage, setOrderPlaced }: { card: Card;
             <input
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 rounded-2xl p-4 outline-none focus:border-blue-500"
               placeholder="Dirección"
-              defaultValue="Calle 123 #45-67"
+              value={address}
+              onChange={e => setAddress(e.target.value)}
             />
             <input
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 rounded-2xl p-4 outline-none focus:border-blue-500"
               placeholder="Ciudad"
-              defaultValue="Bogotá"
+              value={city}
+              onChange={e => setCity(e.target.value)}
             />
             <textarea
               className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 rounded-2xl p-4 outline-none focus:border-blue-500"
               placeholder="Observaciones"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
             />
           </div>
+
+          {error && (
+            <div className="mt-4 flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-2xl text-red-700 dark:text-red-400 text-sm">
+              <AlertCircle size={16} className="shrink-0" />
+              {error}
+            </div>
+          )}
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm h-fit">
           <h3 className="text-xl font-black text-slate-950 dark:text-white mb-4">
@@ -142,13 +212,12 @@ export function Checkout({ card, offer, setPage, setOrderPlaced }: { card: Card;
             </div>
           </div>
           <button
-            onClick={() => {
-              setOrderPlaced(true);
-              setPage('orderSuccess');
-            }}
-            className="mt-6 w-full px-5 py-4 rounded-2xl bg-yellow-400 hover:bg-yellow-300 font-black text-slate-900 flex items-center justify-center gap-2"
+            onClick={handleOrder}
+            disabled={submitting}
+            className="mt-6 w-full px-5 py-4 rounded-2xl bg-yellow-400 hover:bg-yellow-300 disabled:opacity-60 disabled:cursor-not-allowed font-black text-slate-900 flex items-center justify-center gap-2 transition"
           >
-            <ShieldCheck size={20} /> Realizar pedido protegido
+            <ShieldCheck size={20} />
+            {submitting ? 'Procesando…' : 'Realizar pedido protegido'}
           </button>
         </div>
       </div>

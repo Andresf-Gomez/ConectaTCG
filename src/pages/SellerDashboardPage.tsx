@@ -16,16 +16,29 @@ import { LANG_LABELS, bestName } from '../hooks/useCatalog';
 
 const YEAR_NONE = '__none__';
 
-interface SupabaseTx {
+interface Order {
   id: string;
-  seller_id: string;
+  listing_id: string;
   buyer_id: string;
-  price: number;
-  status: 'pending' | 'shipped' | 'delivered' | 'confirmed' | 'dispute';
+  seller_id: string;
+  catalog_card_id: number;
+  quantity: number;
+  unit_price: number;
+  platform_fee: number;
+  seller_payout: number;
+  status: 'pending' | 'paid' | 'shipped' | 'received' | 'closed' | 'disputed';
   created_at: string;
-  card_name?: string;
-  buyer_name?: string;
-  seller_name?: string;
+  paid_at: string | null;
+  shipped_at: string | null;
+  received_at: string | null;
+  closed_at: string | null;
+  disputed_at: string | null;
+  catalog_cards: {
+    names: Record<string, string>;
+    image_url: string | null;
+    sets: { set_code: string; names: Record<string, string> } | null;
+  } | null;
+  buyer: { email: string } | null;
 }
 
 interface DashListing {
@@ -84,21 +97,22 @@ function mapListing(row: ListingJoinRow): DashListing {
 }
 
 type DashTab = 'resumen' | 'pedidos' | 'inventario' | 'historial';
-type OrderTab = 'pending' | 'shipped' | 'delivered' | 'dispute';
+type OrderTab = 'paid' | 'shipped' | 'received' | 'closed' | 'disputed';
 type DateFilter = 'week' | 'month' | 'year';
 
 const DASH_TABS: { key: DashTab; label: string }[] = [
-  { key: 'resumen', label: 'Resumen' },
-  { key: 'pedidos', label: 'Pedidos' },
+  { key: 'resumen',    label: 'Resumen' },
+  { key: 'pedidos',   label: 'Pedidos' },
   { key: 'inventario', label: 'Inventario' },
   { key: 'historial', label: 'Historial' },
 ];
 
 const ORDER_TABS: { key: OrderTab; label: string }[] = [
-  { key: 'pending', label: 'Por enviar' },
-  { key: 'shipped', label: 'Enviados' },
-  { key: 'delivered', label: 'Recibidos' },
-  { key: 'dispute', label: 'Disputas' },
+  { key: 'paid',     label: 'Por enviar' },
+  { key: 'shipped',  label: 'Enviados' },
+  { key: 'received', label: 'Recibidos' },
+  { key: 'closed',   label: 'Cerrados' },
+  { key: 'disputed', label: 'Disputas' },
 ];
 
 const DATE_FILTERS: { key: DateFilter; label: string }[] = [
@@ -109,22 +123,24 @@ const DATE_FILTERS: { key: DateFilter; label: string }[] = [
 
 const CONDITIONS = ['Near Mint', 'Excellent', 'Light Played', 'Played'];
 
-function statusLabel(status: SupabaseTx['status']) {
-  const map: Record<SupabaseTx['status'], string> = {
-    pending: 'Por enviar',
-    shipped: 'Enviado',
-    delivered: 'Recibido',
-    confirmed: 'Confirmado',
-    dispute: 'Disputa',
+function statusLabel(status: Order['status']) {
+  const map: Record<Order['status'], string> = {
+    pending:  'Pendiente',
+    paid:     'Por enviar',
+    shipped:  'Enviado',
+    received: 'Recibido',
+    closed:   'Cerrado',
+    disputed: 'Disputa',
   };
   return map[status] ?? status;
 }
 
-function statusBadge(status: SupabaseTx['status']) {
-  if (status === 'pending') return 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-400';
-  if (status === 'shipped') return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400';
-  if (status === 'delivered' || status === 'confirmed') return 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400';
-  if (status === 'dispute') return 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400';
+function statusBadge(status: Order['status']) {
+  if (status === 'pending')  return 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400';
+  if (status === 'paid')     return 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-400';
+  if (status === 'shipped')  return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400';
+  if (status === 'received' || status === 'closed') return 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400';
+  if (status === 'disputed') return 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400';
   return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300';
 }
 
@@ -140,7 +156,9 @@ function getStartDate(filter: DateFilter): Date {
   return new Date(now.getFullYear(), 0, 1);
 }
 
-function buildChartData(salesTx: SupabaseTx[], buysTx: SupabaseTx[], filter: DateFilter) {
+function orderTotal(o: Order) { return o.unit_price * o.quantity; }
+
+function buildChartData(salesOrders: Order[], buyOrders: Order[], filter: DateFilter) {
   const now = new Date();
   if (filter === 'week') {
     return Array.from({ length: 7 }, (_, i) => {
@@ -149,33 +167,33 @@ function buildChartData(salesTx: SupabaseTx[], buysTx: SupabaseTx[], filter: Dat
       const key = d.toISOString().slice(0, 10);
       return {
         periodo: d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' }),
-        ingresos: salesTx.filter(t => t.created_at.startsWith(key)).reduce((s, t) => s + t.price, 0),
-        gastos: buysTx.filter(t => t.created_at.startsWith(key)).reduce((s, t) => s + t.price, 0),
+        ingresos: salesOrders.filter(o => o.created_at.startsWith(key)).reduce((s, o) => s + orderTotal(o), 0),
+        gastos:   buyOrders.filter(o => o.created_at.startsWith(key)).reduce((s, o) => s + orderTotal(o), 0),
       };
     });
   }
   if (filter === 'month') {
     return Array.from({ length: 4 }, (_, w) => {
       const start = new Date(now.getFullYear(), now.getMonth(), 1 + w * 7);
-      const end = new Date(now.getFullYear(), now.getMonth(), 7 + w * 7);
-      const inRange = (t: SupabaseTx) => { const d = new Date(t.created_at); return d >= start && d <= end; };
+      const end   = new Date(now.getFullYear(), now.getMonth(), 7 + w * 7);
+      const inRange = (o: Order) => { const d = new Date(o.created_at); return d >= start && d <= end; };
       return {
-        periodo: `Sem ${w + 1}`,
-        ingresos: salesTx.filter(inRange).reduce((s, t) => s + t.price, 0),
-        gastos: buysTx.filter(inRange).reduce((s, t) => s + t.price, 0),
+        periodo:  `Sem ${w + 1}`,
+        ingresos: salesOrders.filter(inRange).reduce((s, o) => s + orderTotal(o), 0),
+        gastos:   buyOrders.filter(inRange).reduce((s, o) => s + orderTotal(o), 0),
       };
     });
   }
   const names = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   return Array.from({ length: 12 }, (_, m) => {
-    const inMonth = (t: SupabaseTx) => {
-      const d = new Date(t.created_at);
+    const inMonth = (o: Order) => {
+      const d = new Date(o.created_at);
       return d.getMonth() === m && d.getFullYear() === now.getFullYear();
     };
     return {
-      periodo: names[m],
-      ingresos: salesTx.filter(inMonth).reduce((s, t) => s + t.price, 0),
-      gastos: buysTx.filter(inMonth).reduce((s, t) => s + t.price, 0),
+      periodo:  names[m],
+      ingresos: salesOrders.filter(inMonth).reduce((s, o) => s + orderTotal(o), 0),
+      gastos:   buyOrders.filter(inMonth).reduce((s, o) => s + orderTotal(o), 0),
     };
   });
 }
@@ -616,14 +634,14 @@ function InventorySection({
 export function SellerDashboardPage({ setPage }: { setPage: (page: string) => void }) {
   const { user } = useAuth();
   const [tab, setTab] = useState<DashTab>('resumen');
-  const [orderTab, setOrderTab] = useState<OrderTab>('pending');
+  const [orderTab, setOrderTab] = useState<OrderTab>('paid');
   const [dateFilter, setDateFilter] = useState<DateFilter>('month');
 
   const [inventory, setInventory] = useState<DashListing[]>([]);
-  const [salesTx, setSalesTx] = useState<SupabaseTx[]>([]);
-  const [buysTx, setBuysTx] = useState<SupabaseTx[]>([]);
-  const [allSalesTx, setAllSalesTx] = useState<SupabaseTx[]>([]);
-  const [allBuysTx, setAllBuysTx] = useState<SupabaseTx[]>([]);
+  const [salesOrders, setSalesOrders] = useState<Order[]>([]);
+  const [buyOrders, setBuyOrders] = useState<Order[]>([]);
+  const [allSalesOrders, setAllSalesOrders] = useState<Order[]>([]);
+  const [allBuyOrders, setAllBuyOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -636,6 +654,14 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
+    const ordersSelect = `
+      id, listing_id, buyer_id, seller_id, catalog_card_id,
+      quantity, unit_price, platform_fee, seller_payout, status,
+      created_at, paid_at, shipped_at, received_at, closed_at, disputed_at,
+      catalog_cards ( names, image_url, sets ( set_code, names ) ),
+      buyer:profiles!buyer_id ( email )
+    `;
+
     async function fetchAll() {
       setLoading(true);
       const [invRes, salesRes, buysRes] = await Promise.all([
@@ -644,12 +670,20 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
             catalog_cards ( names, number, image_url, sets ( set_code, names, year ) )`)
           .eq('seller_id', uid)
           .order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').eq('seller_id', uid).gte('created_at', startOfMonth.toISOString()),
-        supabase.from('transactions').select('*').eq('buyer_id', uid).gte('created_at', startOfMonth.toISOString()),
+        supabase.from('orders')
+          .select(ordersSelect)
+          .eq('seller_id', uid)
+          .gte('created_at', startOfMonth.toISOString())
+          .order('created_at', { ascending: false }),
+        supabase.from('orders')
+          .select(ordersSelect)
+          .eq('buyer_id', uid)
+          .gte('created_at', startOfMonth.toISOString())
+          .order('created_at', { ascending: false }),
       ]);
       setInventory(((invRes.data as unknown as ListingJoinRow[]) ?? []).map(mapListing));
-      setSalesTx((salesRes.data as SupabaseTx[]) ?? []);
-      setBuysTx((buysRes.data as SupabaseTx[]) ?? []);
+      setSalesOrders((salesRes.data as Order[]) ?? []);
+      setBuyOrders((buysRes.data as Order[]) ?? []);
       setLoading(false);
     }
     fetchAll();
@@ -660,44 +694,51 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
     if (!user || tab !== 'historial') return;
     const uid = user.id;
     const start = getStartDate(dateFilter).toISOString();
+    const histSelect = `id, quantity, unit_price, platform_fee, seller_payout, status, created_at,
+      catalog_cards ( names ), buyer:profiles!buyer_id ( email )`;
     Promise.all([
-      supabase.from('transactions').select('*').eq('seller_id', uid).gte('created_at', start),
-      supabase.from('transactions').select('*').eq('buyer_id', uid).gte('created_at', start),
+      supabase.from('orders').select(histSelect).eq('seller_id', uid).gte('created_at', start).order('created_at', { ascending: false }),
+      supabase.from('orders').select(histSelect).eq('buyer_id',  uid).gte('created_at', start).order('created_at', { ascending: false }),
     ]).then(([s, b]) => {
-      setAllSalesTx((s.data as SupabaseTx[]) ?? []);
-      setAllBuysTx((b.data as SupabaseTx[]) ?? []);
+      setAllSalesOrders((s.data as Order[]) ?? []);
+      setAllBuyOrders((b.data as Order[]) ?? []);
     });
   }, [user, tab, dateFilter]);
 
-  // Metrics (computed from active cards only)
-  const ventasMes = salesTx.reduce((s, t) => s + t.price, 0);
-  const comprasMes = buysTx.reduce((s, t) => s + t.price, 0);
+  // Metrics
+  const ventasMes = salesOrders.reduce((s, o) => s + orderTotal(o), 0);
+  const comprasMes = buyOrders.reduce((s, o) => s + orderTotal(o), 0);
   const activeInventory = inventory.filter(c => c.status === 'active');
-  const pedidosPorEnviar = salesTx.filter(t => t.status === 'pending').length;
+  const pedidosPorEnviar = salesOrders.filter(o => o.status === 'paid').length;
 
-  // Orders filtered by tab
-  const filteredOrders = useMemo(() => {
-    if (orderTab === 'delivered') {
-      return salesTx.filter(t => t.status === 'delivered' || t.status === 'confirmed');
-    }
-    return salesTx.filter(t => t.status === orderTab);
-  }, [salesTx, orderTab]);
+  // Orders filtered by tab (seller view: only seller's sales)
+  const filteredOrders = useMemo(
+    () => salesOrders.filter(o => o.status === orderTab),
+    [salesOrders, orderTab],
+  );
 
   const chartData = useMemo(
-    () => buildChartData(allSalesTx, allBuysTx, dateFilter),
-    [allSalesTx, allBuysTx, dateFilter],
+    () => buildChartData(allSalesOrders, allBuyOrders, dateFilter),
+    [allSalesOrders, allBuyOrders, dateFilter],
   );
 
   const historyRows = useMemo(() => {
-    const sales = allSalesTx.map(t => ({ ...t, txType: 'Venta' as const }));
-    const buys = allBuysTx.map(t => ({ ...t, txType: 'Compra' as const }));
+    const sales = allSalesOrders.map(o => ({ ...o, txType: 'Venta' as const }));
+    const buys  = allBuyOrders.map(o => ({ ...o, txType: 'Compra' as const }));
     return [...sales, ...buys].sort((a, b) => b.created_at.localeCompare(a.created_at));
-  }, [allSalesTx, allBuysTx]);
+  }, [allSalesOrders, allBuyOrders]);
 
   async function markShipped(id: string) {
     setActionLoading(id);
-    await supabase.from('transactions').update({ status: 'shipped' }).eq('id', id);
-    setSalesTx(prev => prev.map(t => t.id === id ? { ...t, status: 'shipped' as const } : t));
+    const { error } = await supabase.rpc('update_order_status', {
+      p_order_id: id,
+      p_new_status: 'shipped',
+    });
+    if (!error) {
+      setSalesOrders(prev => prev.map(o =>
+        o.id === id ? { ...o, status: 'shipped' as const, shipped_at: new Date().toISOString() } : o,
+      ));
+    }
     setActionLoading(null);
   }
 
@@ -770,7 +811,7 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
                     }`}
                   >
                     {t.label}
-                    {t.key === 'pending' && pedidosPorEnviar > 0 && (
+                    {t.key === 'paid' && pedidosPorEnviar > 0 && (
                       <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 bg-blue-600 text-white rounded-full text-[10px] font-black">
                         {pedidosPorEnviar}
                       </span>
@@ -781,57 +822,61 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
 
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[700px] text-[11px] text-left">
+                  <table className="w-full min-w-[760px] text-[11px] text-left">
                     <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                       <tr className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tight">
                         <th className="px-3 py-3">Carta</th>
                         <th className="px-3 py-3">Comprador</th>
                         <th className="px-3 py-3">Fecha</th>
-                        <th className="px-3 py-3 text-right">Precio</th>
+                        <th className="px-3 py-3 text-right">Total</th>
+                        <th className="px-3 py-3 text-right">Recibes</th>
                         <th className="px-3 py-3 text-center">Estado</th>
                         <th className="px-3 py-3">Acción</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                      {filteredOrders.length > 0 ? filteredOrders.map(tx => (
-                        <tr key={tx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition align-middle">
-                          <td className="px-3 py-3 font-bold text-slate-800 dark:text-slate-200">{tx.card_name ?? '—'}</td>
+                      {filteredOrders.length > 0 ? filteredOrders.map(o => (
+                        <tr key={o.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition align-middle">
+                          <td className="px-3 py-3 font-bold text-slate-800 dark:text-slate-200">
+                            {bestName(o.catalog_cards?.names ?? {}, 'es', String(o.catalog_card_id))}
+                            {o.quantity > 1 && (
+                              <span className="ml-1 text-slate-400 font-normal">×{o.quantity}</span>
+                            )}
+                          </td>
                           <td className="px-3 py-3 text-slate-600 dark:text-slate-400">
-                            {tx.buyer_name ?? `${tx.buyer_id.slice(0, 8)}…`}
+                            {o.buyer?.email ?? `${o.buyer_id.slice(0, 8)}…`}
                           </td>
                           <td className="px-3 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                            {new Date(tx.created_at).toLocaleDateString('es-CO')}
+                            {new Date(o.created_at).toLocaleDateString('es-CO')}
                           </td>
                           <td className="px-3 py-3 text-right font-black text-slate-900 dark:text-white whitespace-nowrap">
-                            {money(tx.price)}
+                            {money(o.unit_price * o.quantity)}
+                          </td>
+                          <td className="px-3 py-3 text-right font-black text-green-700 dark:text-green-400 whitespace-nowrap">
+                            {money(o.seller_payout)}
                           </td>
                           <td className="px-3 py-3 text-center">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-black ${statusBadge(tx.status)}`}>
-                              {statusLabel(tx.status)}
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-black ${statusBadge(o.status)}`}>
+                              {statusLabel(o.status)}
                             </span>
                           </td>
                           <td className="px-3 py-3">
-                            {tx.status === 'pending' ? (
+                            {o.status === 'paid' ? (
                               <button
-                                onClick={() => markShipped(tx.id)}
-                                disabled={actionLoading === tx.id}
+                                onClick={() => markShipped(o.id)}
+                                disabled={actionLoading === o.id}
                                 className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-[10px] font-black transition"
                               >
-                                {actionLoading === tx.id ? '…' : 'Marcar enviado'}
+                                {actionLoading === o.id ? '…' : 'Marcar enviado'}
                               </button>
                             ) : (
-                              <button
-                                onClick={() => setPage('transactionDetail')}
-                                className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-[10px] font-black transition"
-                              >
-                                Ver detalle
-                              </button>
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">—</span>
                             )}
                           </td>
                         </tr>
                       )) : (
                         <tr>
-                          <td colSpan={6} className="px-3 py-10 text-center text-slate-400 dark:text-slate-500">
+                          <td colSpan={7} className="px-3 py-10 text-center text-slate-400 dark:text-slate-500">
                             No hay pedidos en esta categoría
                           </td>
                         </tr>
@@ -907,30 +952,32 @@ export function SellerDashboardPage({ setPage }: { setPage: (page: string) => vo
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                      {historyRows.length > 0 ? historyRows.map(tx => (
+                      {historyRows.length > 0 ? historyRows.map(o => (
                         <tr
-                          key={`${tx.txType}-${tx.id}`}
+                          key={`${o.txType}-${o.id}`}
                           className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition align-middle"
                         >
                           <td className="px-3 py-3 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                            {new Date(tx.created_at).toLocaleDateString('es-CO')}
+                            {new Date(o.created_at).toLocaleDateString('es-CO')}
                           </td>
                           <td className="px-3 py-3">
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-black ${
-                              tx.txType === 'Venta'
+                              o.txType === 'Venta'
                                 ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400'
                                 : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400'
                             }`}>
-                              {tx.txType}
+                              {o.txType}
                             </span>
                           </td>
-                          <td className="px-3 py-3 font-bold text-slate-800 dark:text-slate-200">{tx.card_name ?? '—'}</td>
+                          <td className="px-3 py-3 font-bold text-slate-800 dark:text-slate-200">
+                            {bestName(o.catalog_cards?.names ?? {}, 'es', String(o.catalog_card_id))}
+                          </td>
                           <td className="px-3 py-3 text-right font-black text-slate-900 dark:text-white whitespace-nowrap">
-                            {money(tx.price)}
+                            {money(o.unit_price * o.quantity)}
                           </td>
                           <td className="px-3 py-3 text-center">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-black ${statusBadge(tx.status)}`}>
-                              {statusLabel(tx.status)}
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-black ${statusBadge(o.status)}`}>
+                              {statusLabel(o.status)}
                             </span>
                           </td>
                         </tr>
