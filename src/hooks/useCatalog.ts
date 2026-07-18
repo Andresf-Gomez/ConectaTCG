@@ -46,7 +46,8 @@ export const LANG_LABELS: Record<string, string> = {
 const CARD_SELECT = `
   id, tcgdex_id, names, number, image_url, languages,
   set_id, sets ( set_code, names, year ),
-  rarity_id, rarities ( code, names )
+  rarity_id, rarities ( code, names ),
+  catalog_card_variants ( language, variants ( code ) )
 `.trim();
 
 // ─── Internal row type ────────────────────────────────────────────────────────
@@ -62,9 +63,17 @@ interface SupabaseCatalogRow {
   sets: { set_code: string; names: Record<string, string>; year: number | null } | null;
   rarity_id: number | null;
   rarities: { code: string; names: Record<string, string> } | null;
+  catalog_card_variants: Array<{ language: string; variants: { code: string } | null }> | null;
 }
 
-function mapRow(row: SupabaseCatalogRow): CatalogCard {
+// lang: when provided, returns only variants for that language edition.
+// When omitted (search mode), returns the union across all languages.
+function mapRow(row: SupabaseCatalogRow, lang = ''): CatalogCard {
+  const cvRows = row.catalog_card_variants ?? [];
+  const filtered = lang ? cvRows.filter(cv => cv.language === lang) : cvRows;
+  const variants = [
+    ...new Set(filtered.map(cv => cv.variants?.code).filter((c): c is string => Boolean(c))),
+  ];
   return {
     id: row.tcgdex_id,
     dbId: row.id,
@@ -76,7 +85,7 @@ function mapRow(row: SupabaseCatalogRow): CatalogCard {
     image_url: row.image_url ?? '',
     languages: Array.isArray(row.languages) ? row.languages : [],
     rarity: row.rarities?.names?.en ?? row.rarities?.code ?? '',
-    variants: [],
+    variants,
   };
 }
 
@@ -174,7 +183,7 @@ export async function fetchCards(setCode: string, lang: string): Promise<Catalog
     .order('number');
   if (error) throw error;
 
-  const cards = (data as unknown as SupabaseCatalogRow[] ?? []).map(mapRow);
+  const cards = (data as unknown as SupabaseCatalogRow[] ?? []).map(row => mapRow(row, lang));
   cardsCache.set(cacheKey, cards);
   return cards;
 }
@@ -188,7 +197,7 @@ export async function searchCards(query: string): Promise<CatalogCard[]> {
     .or(`names->>en.ilike.%${q}%,names->>es.ilike.%${q}%`)
     .limit(20);
   if (error) throw error;
-  return (data as unknown as SupabaseCatalogRow[] ?? []).map(mapRow);
+  return (data as unknown as SupabaseCatalogRow[] ?? []).map(row => mapRow(row));
 }
 
 // ─── useCatalogSearch — for PublishPage search mode ───────────────────────────
