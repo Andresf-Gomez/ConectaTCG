@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Home, Store, Upload, History, WalletCards, MessageCircle, LayoutDashboard } from 'lucide-react';
+import { Home, Store, Upload, History, WalletCards, MessageCircle, LayoutDashboard, ShoppingBag } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Header } from './components/Header';
@@ -28,13 +28,14 @@ import { AdminSetsPage } from './pages/AdminSetsPage';
 import { AdminGamesPage } from './pages/AdminGamesPage';
 import { AdminCardsPage } from './pages/AdminCardsPage';
 import { SellerDashboardPage } from './pages/SellerDashboardPage';
+import { MyOrdersPage } from './pages/MyOrdersPage';
 import { cards, initialTransactions, type Card } from './data/cards';
 import type { GroupedCard } from './hooks/useCards';
 
 const protectedPages = new Set([
   'checkout', 'publish', 'history', 'transactionDetail',
   'payout', 'sellerSale', 'shipmentSuccess', 'publishSuccess', 'orderSuccess',
-  'commissions', 'bulkPublish', 'sellerDashboard',
+  'commissions', 'bulkPublish', 'sellerDashboard', 'myOrders',
 ]);
 
 function AppContent() {
@@ -142,6 +143,9 @@ function AppContent() {
           {page === 'sellerDashboard' && (role === 'seller' || role === 'admin') && (
             <SellerDashboardPage setPage={navigate} />
           )}
+          {page === 'myOrders' && user && (
+            <MyOrdersPage setPage={navigate} />
+          )}
         </div>
       </AnimatePresence>
       <div className="md:hidden fixed bottom-3 left-3 right-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl shadow-xl p-2 flex justify-around z-50">
@@ -150,6 +154,7 @@ function AppContent() {
           { key: 'market', icon: Store, label: 'Buscar', auth: false },
           { key: 'publish', icon: Upload, label: 'Vender', auth: true },
           { key: 'sellerDashboard', icon: LayoutDashboard, label: 'Mi tienda', auth: true, sellerOnly: true },
+          { key: 'myOrders', icon: ShoppingBag, label: 'Mis compras', auth: true },
           { key: 'history', icon: History, label: 'Historial', auth: true },
           { key: 'commissions', icon: WalletCards, label: 'Comisión', auth: true },
           { key: 'contact', icon: MessageCircle, label: 'Contacto', auth: false },
