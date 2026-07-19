@@ -4,7 +4,7 @@ import { Layout } from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
-const EDGE_FN_URL  = 'https://uuzejzgmrvrznnrmrnej.supabase.co/functions/v1/upload-catalog';
+const EDGE_FN_URL  = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-catalog`;
 const CHUNK_SIZE   = 2000;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
