@@ -14,10 +14,10 @@ CREATE TABLE IF NOT EXISTS orders (
   id               uuid          PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Relations
-  listing_id       uuid          NOT NULL REFERENCES listings(id),
+  listing_id       bigint        NOT NULL REFERENCES listings(id),
   buyer_id         uuid          NOT NULL REFERENCES profiles(id),
   seller_id        uuid          NOT NULL REFERENCES profiles(id),
-  catalog_card_id  integer       NOT NULL REFERENCES catalog_cards(id),
+  catalog_card_id  bigint        NOT NULL REFERENCES catalog_cards(id),
 
   -- Prices frozen at purchase time — never recalculated afterward
   quantity         integer       NOT NULL DEFAULT 1 CHECK (quantity > 0),
@@ -96,7 +96,7 @@ CREATE POLICY "admin_manages_orders" ON orders
 -- and raises 'insufficient_stock' without creating a duplicate order.
 
 CREATE OR REPLACE FUNCTION place_order(
-  p_listing_id       uuid,
+  p_listing_id       bigint,
   p_quantity         integer DEFAULT 1,
   p_shipping_address jsonb   DEFAULT NULL
 )
@@ -164,8 +164,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL    ON FUNCTION place_order(uuid, integer, jsonb) FROM PUBLIC;
-GRANT  EXECUTE ON FUNCTION place_order(uuid, integer, jsonb) TO   authenticated;
+REVOKE ALL    ON FUNCTION place_order(bigint, integer, jsonb) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION place_order(bigint, integer, jsonb) TO   authenticated;
 
 -- ── 5. RPC: update_order_status ──────────────────────────────────
 -- Enforces the state machine and role-based transition rules.
