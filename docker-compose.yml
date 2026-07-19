@@ -1,0 +1,12 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    container_name: conecta-tcg-web
+    restart: unless-stopped
+    ports:
+      # WEB_PORT se define en el .env de la VPS; 8080 por defecto para no chocar con otras apps
+      - "${WEB_PORT:-8080}:80"

@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const INPUT = path.resolve('C:/Users/ANDRI/Documentos/Dev/PokemonTCG_BaseDatos/base_depurada.json');
-const OUTPUT = path.resolve(__dirname, '..', 'public', 'catalog.json');
+const OUTPUT = path.resolve(__dirname, 'output', 'catalog.json');
 
 console.log('Leyendo archivo fuente...');
 const raw = JSON.parse(fs.readFileSync(INPUT, 'utf-8'));
@@ -77,6 +77,7 @@ const catalog = entries.map((card) => {
 });
 
 const json = JSON.stringify(catalog);
+fs.mkdirSync(path.dirname(OUTPUT), { recursive: true });
 fs.writeFileSync(OUTPUT, json, 'utf-8');
 
 const sizeMB = (Buffer.byteLength(json, 'utf-8') / (1024 * 1024)).toFixed(2);
