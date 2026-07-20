@@ -1,65 +1,57 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guía para Claude Code (claude.ai/code) al trabajar en este repositorio.
 
 ## Project Overview
 
-Conecta TCG is a marketplace web app for buying and selling Pokemon TCG cards and sealed products in Colombia. It's a single-page application with client-side routing via state (no router library). All data is hardcoded mock data — there is no backend or API.
+Conecta TCG es un marketplace web para comprar y vender cartas Pokémon TCG y producto sellado en Colombia. SPA con routing por estado (sin librería de router). Backend real en **Supabase self-hosted** (auth, Postgres, Storage, Edge Functions). Precios en COP vía `Intl.NumberFormat`.
 
 ## Commands
 
-- `npm run dev` — Start Vite dev server (port 5173)
-- `npm run build` — Type-check with `tsc -b` then build with Vite
-- `npm run lint` — Run ESLint
-- `npm run preview` — Preview production build
+- `npm run dev` — Vite dev server (puerto 5173)
+- `npm run build` — Type-check (`tsc -b`) + build Vite
+- `npm run lint` — ESLint
+- `npm run preview` — Preview del build
 
 ## Tech Stack
 
 - React 19 + TypeScript, Vite 8
-- Tailwind CSS v4 (configured via `@tailwindcss/vite` plugin, no `tailwind.config.js`)
-- Framer Motion for page transitions
-- Recharts for price history charts
-- Lucide React for icons
-- Prices formatted in COP (Colombian Pesos) via `Intl.NumberFormat`
+- Tailwind CSS v4 (plugin `@tailwindcss/vite`, sin `tailwind.config.js`)
+- Framer Motion (transiciones), Recharts (gráficas), Lucide React (iconos)
+- `@supabase/supabase-js`
 
 ## Architecture
 
-The entire app lives in a single file: `src/App.tsx`. It contains:
+La app está modularizada (ya NO vive en un solo `App.tsx`):
 
-- **Mock data**: `cards` array (13 products with nested `offers`) and `sellerReviews` at the top
-- **Page routing**: The root `App` component manages a `page` state string. Each page is a function component rendered conditionally by matching the `page` value
-- **Pages**: home, market (marketplace with filters), detail (card detail + price chart), sellerProfile, checkout, orderSuccess, publish, publishSuccess, sellerSale, shipmentSuccess, payout, history (transaction table), transactionDetail, commissions, contact, login
-- **Shared components**: `Header`, `Layout`, `SearchBar`, `PriceBox`, `Metric`, `InfoPill`, `CardTile`, `OfferRow`, `OfferMini`
-- **Commission logic**: Tiered rates (8% ≤100k, 6% ≤300k, 4% >300k COP) via `getCommissionRate/Value/Label`
-- **Transaction management**: `transactions` state with status updates (confirm received, open case, payout to bank/balance)
+- **Routing**: `src/App.tsx` maneja un estado `page` (string) y hace props drilling de `setPage`. Sin URLs/deep-linking (se pierde estado al recargar — deuda conocida).
+- **Páginas**: `src/pages/` — Home, Marketplace, DetailPage, Checkout, publicación (@src/pages/PublishPage.tsx, @src/pages/BulkPublishPage.tsx), dashboard vendedor, historial, y panel admin (@src/pages/AdminCardsPage.tsx, AdminSetsPage, AdminGamesPage, AdminCatalogPage).
+- **Componentes**: `src/components/` (Header, Layout, CardTile, etc.)
+- **Estado global**: `src/context/` (AuthContext, ThemeContext)
+- **Datos**: `src/hooks/` (useCatalog, useCards, useListings), acceso a Supabase vía @src/lib/supabase.ts
+- **Utilidades**: `src/utils/` — dinero en @src/utils/money.ts, comisiones escalonadas en @src/utils/commissions.ts (8% ≤100k, 6% ≤300k, 4% >300k COP)
+- **Imágenes**: transformación de Storage (thumb/card/full) en @src/lib/imageUrl.ts
+- **Esquema BD**: migraciones en `supabase/migrations/` (baseline + tabla `orders` con RPCs `place_order`/`update_order_status`)
 
 ## Styling
 
-All styling uses Tailwind CSS v4 utility classes inline. The `src/index.css` file only contains `@import "tailwindcss"`. No custom CSS, no component library.
+Todo con clases utilitarias de Tailwind v4 inline. `src/index.css` solo tiene `@import "tailwindcss"`. Sin CSS custom ni librería de componentes.
 
-## Sesiones activas y división de responsabilidades
+## Infraestructura / Deploy
 
-Hay dos sesiones de Claude trabajando en paralelo en este proyecto. Para evitar conflictos, cada una tiene archivos propios. **No tocar los archivos de la otra sesión sin coordinación.**
+Self-hosted en VPS Hostinger (Ubuntu, IP 2.24.192.71) gestionada con **Coolify**. Detalles y comandos en @docs/infraestructura.md.
 
-### Sesión BACKEND / FUNCIONALIDAD (esta sesión)
-Foco: lógica de negocio, flujos de publicación, integración con Supabase, procesamiento del catálogo.
-Responsable de:
-- `src/pages/BulkPublishPage.tsx`
-- `src/pages/PublishPage.tsx`
-- `src/hooks/useCatalog.ts`
-- `scripts/process-catalog.cjs`
-- `public/catalog.json`
+- **App**: https://conectatcg.com (build del `Dockerfile` de este repo, servido por nginx)
+- **Supabase propio**: https://api.conectatcg.com (Kong)
+- **Deploy**: no hay auto-deploy por push; se dispara manualmente desde Coolify o su API.
+- Config del build: @Dockerfile, @nginx.conf, @docker-compose.yml (compose local; en la VPS despliega Coolify, no compose manual).
 
-### Sesión UX/UI (otra sesión)
-Foco: diseño visual, responsive, componentes compartidos.
-Responsable de:
-- `src/components/` en general (Header, Layout, CardTile, SearchBar, InfoPill, ImagePlaceholder, etc.)
-- `src/App.tsx`
-- `src/pages/HomePage.tsx`
-- `src/pages/Marketplace.tsx`
-- `src/index.css`
+## Mantenimiento de memoria del proyecto
 
-### Archivos compartidos — coordinar antes de editar
-- `src/hooks/useCatalog.ts` exporta tipos (`CatalogCard`) que ambas sesiones usan. Avisar si se necesita cambiar la interfaz.
-- `package.json` / `package-lock.json` — no agregar dependencias sin avisar.
-- Páginas con lógica + UI mezclada (`BulkPublishPage`, `PublishPage`): la sesión Backend maneja la lógica, la sesión UX/UI consulta antes de cambiar estilos.
+- Al finalizar cambios importantes, actualiza este archivo o los docs en /docs
+  con: decisiones de arquitectura tomadas, convenciones nuevas, y comandos
+  que se agregaron o cambiaron.
+- Registra el estado de tareas pendientes en docs/tareas.md usando checkboxes [ ].
+- No dupliques aquí lo que ya está en el código; referencia archivos con @ruta.
+- Mantén este archivo por debajo de ~200 líneas: si algo solo se necesita
+  ocasionalmente, muévelo a /docs y referéncialo cuando haga falta.
