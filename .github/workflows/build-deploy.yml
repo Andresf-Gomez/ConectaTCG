@@ -1,4 +1,4 @@
-name: build-image
+name: build-and-deploy
 
 on:
   push:
@@ -10,12 +10,13 @@ permissions:
   contents: read
   packages: write
 
+# Serializa el pipeline completo: nunca dos builds/deploys de conecta a la vez.
 concurrency:
   group: conecta-production-build
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-push-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,8 +38,6 @@ jobs:
             type=sha,format=long,prefix=sha-
             type=raw,value=main
 
-      # Solo build + push por ahora; el deploy vía API de Coolify se añade
-      # tras validar la primera imagen (mismo proceso seguido con Drew).
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -50,3 +49,37 @@ jobs:
           build-args: |
             VITE_SUPABASE_URL=${{ vars.VITE_SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY=${{ vars.VITE_SUPABASE_ANON_KEY }}
+
+      # El deploy solo ocurre tras build+push exitosos. Coolify (build pack
+      # dockerimage, tag main) hace docker pull + recreate: cero builds en el VPS.
+      - name: Deploy via Coolify API
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: |
+          set -euo pipefail
+          resp=$(curl -fsS -X POST -H "Authorization: Bearer $COOLIFY_TOKEN" \
+            "${{ vars.COOLIFY_WEBHOOK_URL }}/api/v1/deploy?uuid=${{ vars.COOLIFY_APP_UUID }}")
+          dep=$(echo "$resp" | jq -r '.deployments[0].deployment_uuid')
+          echo "deployment_uuid=$dep"
+          for i in $(seq 1 60); do
+            st=$(curl -fsS -H "Authorization: Bearer $COOLIFY_TOKEN" \
+              "${{ vars.COOLIFY_WEBHOOK_URL }}/api/v1/deployments/$dep" | jq -r '.status')
+            echo "status=$st"
+            case "$st" in
+              finished) exit 0 ;;
+              failed|cancelled*) echo "::error::deployment $st"; exit 1 ;;
+            esac
+            sleep 5
+          done
+          echo "::error::deployment timeout"; exit 1
+
+      # Garantía de revisión: lo desplegado es :main, que debe seguir apuntando
+      # al digest exacto de sha-<commit de este run>. Si no, el workflow falla.
+      - name: Verify deployed revision
+        run: |
+          set -euo pipefail
+          md=$(docker buildx imagetools inspect ghcr.io/andresf-gomez/conectatcg:main --format '{{.Manifest.Digest}}')
+          sd=$(docker buildx imagetools inspect ghcr.io/andresf-gomez/conectatcg:sha-${{ github.sha }} --format '{{.Manifest.Digest}}')
+          echo "main=$md"
+          echo "sha =$sd"
+          [ "$md" = "$sd" ] || { echo "::error::REVISION MISMATCH: main no apunta a este commit"; exit 1; }
