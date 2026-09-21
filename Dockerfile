@@ -9,6 +9,8 @@ ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+# Cap del heap V8 durante el build (el stage se descarta; nginx no hereda nada).
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN npm run build
 
 # Etapa 2: servidor estático
