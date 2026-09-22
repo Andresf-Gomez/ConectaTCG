@@ -1,0 +1,169 @@
+name: ghcr-retention
+
+# Politica GHCR-02: conserva CURRENT (digest del alias), alias movil, las 5 sha-*
+# mas recientes y los pins; borra builds sha-* fuera de ventana como TRIPLETE
+# completo (indice + manifest hijo + attestation). Ante cualquier ambiguedad: SKIP.
+#
+# schedule (mensual) pendiente de merge a la rama por defecto — se ejecuta
+# manualmente con workflow_dispatch desde la rama ghcr-retention mientras tanto.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'true = solo reportar, no borrar'
+        default: 'true'
+      max_deletes:
+        description: 'maximo de BUILDS (tripletes) a borrar en esta ejecucion'
+        default: '10'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  OWNER_API: Andresf-Gomez
+  IMAGE: ghcr.io/andresf-gomez/conectatcg
+  PKG: conectatcg
+  ALIAS: main
+  WINDOW: '5'
+  PINS: ''
+
+jobs:
+  retention:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Aplicar politica de retencion
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          MAX_DELETES: ${{ inputs.max_deletes }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess, sys, urllib.request
+
+          OWNER = os.environ['OWNER_API']; PKG = os.environ['PKG']
+          IMAGE = os.environ['IMAGE']; ALIAS = os.environ['ALIAS']
+          WINDOW = int(os.environ['WINDOW'])
+          PINS = set(p for p in os.environ.get('PINS','').split() if p)
+          DRY = os.environ.get('DRY_RUN','true').lower() != 'false'
+          MAXD = int(os.environ.get('MAX_DELETES','10'))
+          TOK = os.environ['GH_TOKEN']
+          API = f"https://api.github.com/users/{OWNER}/packages/container/{PKG}/versions"
+
+          def req(url, method='GET'):
+              r = urllib.request.Request(url, method=method)
+              r.add_header('Authorization', f'Bearer {TOK}')
+              r.add_header('Accept', 'application/vnd.github+json')
+              with urllib.request.urlopen(r) as resp:
+                  return resp.status, resp.read()
+
+          # 1) listar versiones (paginado)
+          versions, page = [], 1
+          while True:
+              st, body = req(f"{API}?per_page=100&page={page}")
+              batch = json.loads(body)
+              if not batch: break
+              versions += batch; page += 1
+              if len(batch) < 100: break
+          assert versions, "package sin versiones"
+          for v in versions:  # guard: datos completos
+              assert 'id' in v and 'name' in v and 'tags' in v.get('metadata',{}).get('container',{}), \
+                  f"datos incompletos en version {v.get('id')}: SKIP GLOBAL"
+
+          bydigest = {v['name']: v for v in versions}
+          tagged = [v for v in versions if v['metadata']['container']['tags']]
+          untagged = {v['name']: v for v in versions if not v['metadata']['container']['tags']}
+
+          # 2) CURRENT = digest del alias movil
+          alias_v = [v for v in tagged if ALIAS in v['metadata']['container']['tags']]
+          assert len(alias_v) == 1, f"alias {ALIAS} no resuelto de forma unica: ABORT"
+          current = alias_v[0]['name']
+
+          # 3) builds sha-* ordenados por fecha desc
+          sha_builds = sorted(
+              [v for v in tagged if any(t.startswith('sha-') for t in v['metadata']['container']['tags'])],
+              key=lambda v: v['created_at'], reverse=True)
+
+          def shatag(v): return next(t for t in v['metadata']['container']['tags'] if t.startswith('sha-'))
+
+          # CURRENT no consume ventana; un pin dentro de la ventana cuenta como
+          # miembro normal, un pin fuera sobrevive como extra sin consumir cupo.
+          keep, candidates, win = [], [], 0
+          for v in sha_builds:
+              tags = set(v['metadata']['container']['tags'])
+              if v['name'] == current or ALIAS in tags:
+                  keep.append(v)
+              elif win < WINDOW:
+                  keep.append(v); win += 1
+              elif tags & PINS:
+                  keep.append(v)
+              else:
+                  candidates.append(v)
+
+          def children(digest):
+              out = subprocess.run(
+                  ['docker','buildx','imagetools','inspect','--raw', f'{IMAGE}@{digest}'],
+                  capture_output=True, text=True)
+              if out.returncode != 0: return None
+              m = json.loads(out.stdout)
+              return [x['digest'] for x in m.get('manifests', [])]
+
+          # 4) hijos de TODO indice conservado = intocables
+          kept_children = set()
+          for v in keep:
+              ch = children(v['name'])
+              assert ch is not None, f"no puedo resolver hijos de {shatag(v)}: ABORT"
+              kept_children |= set(ch)
+
+          print(f"== {PKG} == CURRENT={current[:19]} (alias {ALIAS})")
+          print(f"PINS: {sorted(PINS) or '(ninguno)'}")
+          print(f"PROTECTED ({len(keep)} builds): " + ", ".join(shatag(v)[:16] for v in keep))
+          orphans = [d for d in untagged if d not in kept_children]
+
+          # 5) borrar candidatos (triplete completo), los mas viejos primero
+          deleted = skipped = 0
+          for v in sorted(candidates, key=lambda v: v['created_at']):
+              if deleted >= MAXD: break
+              tag = shatag(v); tags = set(v['metadata']['container']['tags'])
+              # SAFETY GUARDS
+              if v['name'] == current or ALIAS in tags or tags & PINS:
+                  print(f"SKIP {tag}: protegido"); skipped += 1; continue
+              ch = children(v['name'])
+              if ch is None:
+                  print(f"SKIP {tag}: hijos irresolubles"); skipped += 1; continue
+              ids, ok = [v['id']], True
+              for c in ch:
+                  if c in kept_children:
+                      print(f"SKIP {tag}: hijo {c[:19]} pertenece a un indice conservado"); ok = False; break
+                  cv = bydigest.get(c)
+                  if cv is None:
+                      print(f"nota {tag}: hijo {c[:19]} sin version propia (inline), continuo")
+                      continue
+                  if cv['metadata']['container']['tags']:
+                      print(f"SKIP {tag}: hijo {c[:19]} tiene tags"); ok = False; break
+                  ids.append(cv['id'])
+              if not ok: skipped += 1; continue
+              # orphans que dejaran de serlo tras borrar este indice
+              orphans = [d for d in orphans if d not in ch]
+              if DRY:
+                  print(f"DRY-RUN borraria {tag}: versiones {ids}")
+              else:
+                  for vid in ids:  # indice primero, luego hijos
+                      st, _ = req(f"{API}/{vid}", method='DELETE')
+                      assert st == 204, f"DELETE {vid} devolvio {st}"
+                  print(f"BORRADO {tag}: versiones {ids}")
+              deleted += 1
+
+          rest = len(candidates) - deleted - skipped
+          print(f"\nRESUMEN: candidatos={len(candidates)} procesados={deleted} skip={skipped} fuera_de_max={max(rest,0)}")
+          if orphans: print(f"ORPHANS untagged (solo reporte, NO se borran): {[o[:19] for o in orphans]}")
+          else: print("ORPHANS untagged: 0")
+          print(f"MODO: {'DRY-RUN' if DRY else 'REAL'}")
+          PY
